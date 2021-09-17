@@ -79,10 +79,19 @@ class extract_data():
         self.longitude = nc_dataset.variables[lon_var][:]
         self.levels = nc_dataset.variables[lev_var][:]
         self.aks = nc_dataset.variables[ak_var][:]
-        self.prior = nc_dataset.variables[prior_var][:]
-        self.prior_units = nc_dataset.variables[prior_var].units
         self.o3 = nc_dataset.variables[o3_var][:]
-        self.o3_units = nc_dataset.variables[o3_var].units
+        try:
+            self.o3_units = nc_dataset.variables[o3_var].units
+        except AttributeError:
+            print("** Cannot find units for ozone. Assuming v/v.")
+            self.o3_units = 'v/v'
+        self.prior = nc_dataset.variables[prior_var][:]
+        try:
+            self.prior_units = nc_dataset.variables[prior_var].units
+        except AttributeError:
+            print("** Cannot find units for prior variable. Assumiung same as ozone.")
+            self.prior_units = self.o3_units
+
         pass_time = nc_dataset.variables['time']
         pass_time_unit = pass_time.units
 
@@ -91,6 +100,7 @@ class extract_data():
         if self.prior_units != self.o3_units:
             print("** Units for prior do not match units for ozone. Quitting.")
             sys.exit()
+
         if self.o3_units in ['1','',None]:
             if config_vars.verbose:
                 print("--> Ozone has units of {}. Assuming this is v/v".format(self.o3_units))
@@ -102,7 +112,7 @@ class extract_data():
 
         if self.o3_units != 'v/v':
             if config_vars.verbose:
-                print("--> Need to convert ozone from units of {} to v/v".format(self.o3_units))
+                print("--> Need to convert ozone from units of {} to g/m2".format(self.o3_units))
             if self.o3_units == 'DU':
                 self.o3 = utils.DU_to_g_m2(self.o3)
             elif self.o3_units == 'ppb':
@@ -114,7 +124,7 @@ class extract_data():
 
         if self.prior_units != 'v/v':
             if config_vars.verbose:
-                print("--> Need to convert prior from units of {} to v/v".format(self.prior_units))
+                print("--> Need to convert prior from units of {} to g/m2".format(self.prior_units))
             if self.prior_units == 'DU':
                 self.prior = utils.DU_to_g_m2(self.prior)
             elif self.prior_units == 'ppb':

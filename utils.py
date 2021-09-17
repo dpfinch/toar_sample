@@ -128,6 +128,42 @@ def calculate_box_air(t_array,p_array):
 
     return box_air_amounts
 
+def g_m2_from_vmr(altitude_array, surface_temp, press_array, o3_vmr):
+    """
+        Calculates g/m2 from volume mixing ratio assuming dry air given a give
+        altitude array (assumed to be in meters)
+    """
+    molec_g_air = 28.97 # molecular weight of air
+    R_gas = 287.058 # Gas constant
+    avo_num = 6.0021409e23
+    dry_air_lapse_rate = 9.8/1000 # degrees per m
+
+    temp_arr = np.zeros(altitude_array.shape) # Create an empty array to input temperature
+    o3_g_cm2 = np.zeros(altitude_array.shape) # Create empty array for the output of ozone
+
+    temp_arr[:,0] = surface_temp # Start array with surface temperature
+    for ob in range(temp_arr.shape[0]):
+        for lev in range(temp_arr.shape[1]-1):
+            start_temp = temp_arr[ob,lev]
+            alt_diff = altitude_array[ob,lev + 1] - altitude_array[on,lev]
+            temp_drop = alt_diff * dry_air_lapse_rate
+            temp_arr[ob,lev + 1] = temp_arr[ob,lev] - temp_drop
+
+        for lev in range(press_array.shape[0]):
+            # Calculate air density in kg/m3
+            # Need to convert pres (hPa) to Pa
+            air_density_kg = (press_array[ob,lev] * 100) / (R_gas * temp_arr[lev])
+            air_density_g = air_density_kg * 1000
+            # Convert to molec/m3
+            molec_per_m3 = (air_density_g / molec_g_air) * avo_num
+            # Convert to molec/cm3
+            molec_cm3 = molec_per_m3 * 1e-6
+            # get molec/cm2 for the whole cell
+            air_amount = np.multiply(molec_cm3, z * 100)
+            o3_g_cm2[ob,lev] = air_amount * o3_vmr[ob,lev]
+
+    return o3_g_cm2
+
 def regrid_column(o3_col,model_levels,sat_levels):
 
     """
