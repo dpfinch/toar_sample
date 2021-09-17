@@ -18,7 +18,9 @@ def days_since_to_dt(time_arr, since_datetime):
 
     # Need to ensure the time arr is in the same float type as the rest of the code
     time_float = [float(h) for h in time_arr[:]]
-    if time_unit == 'hours':
+    if time_unit == 'seconds':
+        dt_time_arr = [unit_base_time + relativedelta(seconds =+ i) for i in time_float]
+    elif time_unit == 'hours':
         dt_time_arr = [unit_base_time + relativedelta(hours =+ i) for i in time_float]
     elif time_unit == 'months':
         dt_time_arr = [unit_base_time + relativedelta(months =+ i) for i in time_float]
@@ -37,7 +39,7 @@ def convert_time_since_units(since_datetime):
     '''
     if type(since_datetime) == str:
         time_str_array = since_datetime.split()
-        if time_str_array[0].lower() in ['hours','days','months']:
+        if time_str_array[0].lower() in ['seconds','hours','days','months']:
             time_unit = time_str_array[0].lower()
             datetime_str = '{} {}'.format(time_str_array[2],time_str_array[3])
             # Use pandas datetime function as it is more forgiving
