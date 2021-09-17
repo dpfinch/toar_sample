@@ -28,10 +28,13 @@ level_var_name = 'model_levs'
 time_var_name  = 'time'
 # Ozone variable name in satellite file
 o3_var_name = 'o3_ap_sub_col_model'
+# o3_var_name = 'x' # AIRS-Aqua names
 # Averaging kernal variable name in satellite files
 ak_var_name = 'ak_rsc_tsc'
+# ak_var_name = 'observation_ops/averaging_kernel'
 # Prior variable name in satellite files
 prior_var_name = 'o3_ap_sub_col_model'
+# prior_var_name = 'observation_ops/xa'
 
 model_repo_url = 'https://tes.jpl.nasa.gov/raw-data/tcr-2_files/monthly-mean_emissions/'
 # TODO: Set up function to delete files

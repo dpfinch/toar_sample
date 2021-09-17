@@ -208,6 +208,10 @@ def sample_model(config_vars, satellite_info):
                                             model_data.levels,
                                             sat_data.levels)
 
+
+            model_w_aks = apply_aks_to_model(config_vars,
+                            interped_model_o3,
+                             sat_data.aks[sample_index])
             # Convert to DU for testing
             g_m2 = interped_model_o3 * 10_000
             mol_per_m2 = g_m2 / 48
@@ -229,7 +233,7 @@ def sample_model(config_vars, satellite_info):
     return model_o3
 
 
-def apply_aks_to_model(config_vars,sat_data):
+def apply_aks_to_model(config_vars,model_column,sat_data):
     """
         Apply the averaging kernals from the satellite files to the sampled model
     """
