@@ -1,3 +1,10 @@
-bin
-lib
+bin/
+lib/
+docs/
 pyvenv.cfg
+test_driver.py
+misc_tests.py
+ral_data_scrape.py
+.DS_Store
+model_download/
+__pycache__/
