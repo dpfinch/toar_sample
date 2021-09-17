@@ -177,6 +177,17 @@ def log_interp_sum_to_level(pres_col,amount_col,out_levels):
 
     return interp_column
 
+def DU_to_g_m2(spc_column, molc_weight = 48):
+    """
+        Convert dobson units to g/m2, default is for molecular weight of ozone (48)
+    """
+    avo_num = 6.0021409e23
+    conv_rate = 2.687e20 # 1 DU == 2.687e20 molecules per square meter
+    molec_per_m2 = spc_column * conv_rate
+    mol_per_m2 = molec_per_m2 / avo_num
+    g_per_m2 = mol_per_m2 * molc_weight
+
+    return g_per_m2
 ################################################################################
 ### END OF PROGRAM
 ################################################################################

@@ -210,18 +210,9 @@ def sample_model(config_vars, satellite_info):
 
 
             model_w_aks = apply_aks_to_model(config_vars,
-                            interped_model_o3,
-                             sat_data.aks[sample_index])
-            # Convert to DU for testing
-            g_m2 = interped_model_o3 * 10_000
-            mol_per_m2 = g_m2 / 48
-            molec_per_m2 =  mol_per_m2 * 6.0021409e23
-            du = molec_per_m2 / 2.687e20
+                                            interped_model_o3,
+                                            sat_data, sample_index)
 
-            g_m2 = model_o3_percm2 * 10_000
-            mol_per_m2 = g_m2 / 48
-            molec_per_m2 =  mol_per_m2 * 6.0021409e23
-            model_du = molec_per_m2 / 2.687e20
 
             pdb.set_trace()
             model_o3_profile[sample_index,:] = sampled_o3
@@ -233,10 +224,16 @@ def sample_model(config_vars, satellite_info):
     return model_o3
 
 
-def apply_aks_to_model(config_vars,model_column,sat_data):
+def apply_aks_to_model(config_vars,model_column,sat_data, sat_index):
     """
         Apply the averaging kernals from the satellite files to the sampled model
+        x' = xa + A(xcomp - xa)
+        Where xa is the prior state, A is the averaging kernel, xcomp is the model
     """
+    sat_prior = sat_data.prior[sat_index]
+    sat_ak = sat_data.aks[sat_index]
+
+
     pass
 
 def output_to_file(config_vars):
