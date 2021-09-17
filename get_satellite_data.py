@@ -74,6 +74,8 @@ class extract_data():
         o3_var = config_vars.o3_var_name
         ak_var = config_vars.ak_var_name
         prior_var = config_vars.prior_var_name
+        alt_var = config_var.altitude_var_name
+        pres_var = config_var.pressure_var_name
 
         self.latitude = nc_dataset.variables[lat_var][:]
         self.longitude = nc_dataset.variables[lon_var][:]
@@ -91,6 +93,15 @@ class extract_data():
         except AttributeError:
             print("** Cannot find units for prior variable. Assumiung same as ozone.")
             self.prior_units = self.o3_units
+        if config_var.include_altitude:
+            self.altitude = nc_dataset.variables[alt_var][:]
+        else:
+            self.altitude = None
+        if config_var.include_pressure:
+            self.pressure = nc_dataset.variables[pres_var][:]
+        else:
+            self.pressure = None
+
 
         pass_time = nc_dataset.variables['time']
         pass_time_unit = pass_time.units

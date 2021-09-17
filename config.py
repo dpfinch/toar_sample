@@ -17,7 +17,7 @@ satellite_product = {
 
 }
 
-# Satellite variable names - replace as needed
+#### SATELLITE VARIABLES ##### - replace as needed ####
 # Latitude variable name in satellite files
 latitude_var_name = 'lat'
 # Longitude variable name in satellite files
@@ -36,6 +36,17 @@ ak_var_name = 'ak_rsc_tsc'
 prior_var_name = 'o3_ap_sub_col_model'
 # prior_var_name = 'observation_ops/xa'
 
+## The satellite ozone data will need to be converted to g/m2.
+## To do this its likely that pressure & altitude are needed - enter variables below
+# Does the satellite file also include pressure of each satellite observation layer?
+include_pressure = False
+pressure_var_name = 'pressure'
+# Does the satellite file also include altitude of each satellite observation layer?
+# This is assumed to be in meters
+include_altitude = False #
+altitude_var_name = '/observation_ops/altitude'
+
+##### MODEL VARIABLES #####
 model_repo_url = 'https://tes.jpl.nasa.gov/raw-data/tcr-2_files/monthly-mean_emissions/'
 # TODO: Set up function to delete files
 keep_model_downloads = False
@@ -68,6 +79,10 @@ class create_config_vars:
         self.ak_var_name = kwargs.get('ak_var_name','')
         self.prior_var_name = kwargs.get('prior_var_name','')
         self.o3_var_name = kwargs.get('o3_var_name','')
+        self.include_altitude = kwargs.get('include_altitude',False)
+        self.altitude_var_name = kwargs.get('altitude_var_name','')
+        self.include_pressure = kwargs.get('included_pressure', False)
+        self.pressure_var_name = kwargs.get('pressure_var_name','')
         self.model_repo_url = kwargs.get('model_repo_url','')
         self.keep_model_downloads = kwargs.get('keep_model_downloads',True)
         self.verbose = kwargs.get('verbose',True)
@@ -108,6 +123,10 @@ config_vars = create_config_vars(output_dir = output_dir,
                                 o3_var_name = o3_var_name,
                                 ak_var_name = ak_var_name,
                                 prior_var_name = prior_var_name,
+                                include_altitude = include_altitude,
+                                altitude_var_name = altitude_var_name,
+                                include_pressure = include_pressure,
+                                pressure_var_name = pressure_var_name,
                                 model_repo_url = model_repo_url,
                                 keep_model_downloads = keep_model_downloads,
                                 verbose = verbose,
