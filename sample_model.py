@@ -8,6 +8,7 @@ import sys
 import os
 from urllib.parse import urljoin
 from requests import get
+from requests.exceptions import HTTPError
 import pdb
 import pandas as pd
 import numpy as np
@@ -90,22 +91,25 @@ def download_model_montly_data(config_vars,model_filepath):
     if config_vars.verbose:
         print("--> Downloading {} to {}".format(nc_filename,out_fname))
 
-    # Download the model file at this url
-    with open(out_fname,'wb') as dwnld_file:
+    # Test that the model repo url works
+    try:
         response = get(full_url)
-        dwnld_file.write(response.content)
+        response.raise_for_status()
+    except HTTPError as http_err:
+        print('*** HTTP error occurred while trying to access model repo:')
+        print(f'{http_err}')
+        sys.exit()
+    except Exception as err:
+        print('An error occurred while trying to access model repo:')
+        print(f'{err}')
+        sys.exit()
+    else:
+        # Download the model file at this url
+        with open(out_fname,'wb') as dwnld_file:
+            dwnld_file.write(response.content)
 
-    if config_vars.verbose:
-        print("* Download complete *")
-
-def remove_file(config_vars, out_fname):
-    '''
-        info here...
-    '''
-    # TODO: complete this function
-    if config_vars.verbose:
-        print("Deleting {}".format(out_fname))
-
+        if config_vars.verbose:
+            print("* Download complete *")
 
 def remove_prior():
     '''
@@ -194,21 +198,21 @@ def sample_model(config_vars, satellite_info):
                                             lat_index,
                                             lon_index]
 
-            # Calculate molecules of air per cm2 in each level of model
-            model_cell_air = utils.calculate_box_air(sampled_t, model_data.levels)
-            # Convert ppb to molecules per cm2
-            model_o3_percm2 = np.multiply(model_cell_air, sampled_o3)
-            if type(model_o3_percm2) == np.ma.core.MaskedArray:
+            model_g_m2 = utils.model_vmr_to_gm2(config_vars,sampled_t,model_data.levels,
+                                                sampled_o3,molec_weight = 48)
+
+            model_molec_cm2 = utils.molec_column_calc(sampled_o3)
+
+            if type(model_g_m2) == np.ma.core.MaskedArray:
                 # Extract data from masked array
-                model_o3_percm2 = model_o3_percm2.filled()
+                model_g_m2 = model_g_m2.filled()
             if type(sat_data.levels) == np.ma.core.MaskedArray:
                 sat_data.levels = sat_data.levels.filled()
 
-            interped_model_o3 = utils.regrid_column(model_o3_percm2,
+            interped_model_o3 = utils.regrid_column(model_g_m2,
                                             model_data.levels,
                                             sat_data.levels)
-
-
+            pdb.set_trace()
             model_w_aks = apply_aks_to_model(config_vars,
                                             interped_model_o3,
                                             sat_data, sample_index)
@@ -218,23 +222,27 @@ def sample_model(config_vars, satellite_info):
             model_o3_profile[sample_index,:] = sampled_o3
 
         sat_data.model_o3 = model_o3_profile
-        sat_data = apply_aks_to_model(config_vars,sat_data)
 
         pdb.set_trace()
     return model_o3
 
 
-def apply_aks_to_model(config_vars,model_column,sat_data, sat_index):
+def apply_aks_to_model(config_vars,model_column,sat_data, sample_index):
     """
         Apply the averaging kernals from the satellite files to the sampled model
-        x' = xa + A(xcomp - xa)
+        Averaging kernels applied by the dot product of model and aks from sat data
+
+        *** not needed *** => x' = xa + A(xcomp - xa)
         Where xa is the prior state, A is the averaging kernel, xcomp is the model
     """
-    sat_prior = sat_data.prior[sat_index]
-    sat_ak = sat_data.aks[sat_index]
+    sat_prior = sat_data.prior[sample_index]
+    sat_ak = sat_data.aks[sample_index]
 
+    sat_model_diff = model_column - sat_prior
+    applied_aks = sat_prior  + np.dot(sat_model_diff, sat_ak)
+    # applied_aks = np.dot(model_column, sat_ak)
 
-    pass
+    return applied_aks
 
 def output_to_file(config_vars):
     """
@@ -245,15 +253,7 @@ def output_to_file(config_vars):
 if __name__ == "__main__":
     # Read in the satellite data and find what files are needed
     satellite_info = get_satellite_data.meta_data(config_vars)
-    if satellite_info.start_date > config_vars.start_date:
-        print("--> Satellite records start from {}. \n Changing start date to match".format(
-            satellite_info.start_date.date()))
-        config_vars.start_date = satellite_info.start_date
-
-    if satellite_info.end_date < config_vars.end_date:
-        print("--> Satellite records end at {}. \n Changing end date to match".format(
-            satellite_info.end_date.date()))
-        config_vars.end_date = satellite_info.end_date
+    utils.satellite_date_check(config_vars, satellite_info)
 
     # Sample the model at the satellite path coordinates
     sampled_o3 = sample_model(config_vars, satellite_info)

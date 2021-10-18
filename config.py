@@ -4,7 +4,7 @@
 output_dir = ''
 output_filename_prefix = ''
 
-satellite_file_dir = '/Volumes/ScotSat_NO2/RAL_O3/'
+satellite_file_dir = '/Users/dfinch/Desktop/RAL_O3/'
 multiple_satellite_files = True
 
 # Set start and end date of satellite records as list of integers: YYYY,M,D
@@ -18,6 +18,8 @@ satellite_product = {
 }
 
 #### SATELLITE VARIABLES ##### - replace as needed ####
+# Set the file suffix for the satellite data. (e.g. nc for netcdf)
+satellite_file_suffix = 'nc'
 # Latitude variable name in satellite files
 latitude_var_name = 'lat'
 # Longitude variable name in satellite files
@@ -27,7 +29,7 @@ level_var_name = 'model_levs'
 # Time variable name in satellite files
 time_var_name  = 'time'
 # Ozone variable name in satellite file
-o3_var_name = 'o3_ap_sub_col_model'
+o3_var_name = 'o3_sub_col'
 # o3_var_name = 'x' # AIRS-Aqua names
 # Averaging kernal variable name in satellite files
 ak_var_name = 'ak_rsc_tsc'
@@ -35,6 +37,9 @@ ak_var_name = 'ak_rsc_tsc'
 # Prior variable name in satellite files
 prior_var_name = 'o3_ap_sub_col_model'
 # prior_var_name = 'observation_ops/xa'
+
+# Apply quality control to the satellite retrieval. This currently only work for RAL data
+apply_quality_control = True
 
 ## The satellite ozone data will need to be converted to g/m2.
 ## To do this its likely that pressure & altitude are needed - enter variables below
@@ -46,7 +51,7 @@ pressure_var_name = 'pressure'
 include_altitude = False #
 altitude_var_name = '/observation_ops/altitude'
 
-##### MODEL VARIABLES #####
+##### MODEL VARIABLES ##### https://tes.jpl.nasa.gov/tes/chemical-reanalysis/products/monthly-mean
 model_repo_url = 'https://tes.jpl.nasa.gov/raw-data/tcr-2_files/monthly-mean_emissions/'
 # TODO: Set up function to delete files
 keep_model_downloads = False
@@ -72,6 +77,8 @@ class create_config_vars:
         self.output_filename_prefix = kwargs.get('output_filename_prefix','')
         self.satellite_file_dir = kwargs.get('satellite_file_dir','')
         self.multiple_satellite_files = kwargs.get('multiple_satellite_files',True)
+        self.satellite_file_suffix = kwargs.get('satellite_file_suffix','nc')
+        self.apply_quality_control = kwargs.get('apply_quality_control',False)
         self.lat_var_name = kwargs.get('lat_var_name','')
         self.lon_var_name = kwargs.get('lon_var_name','')
         self.lev_var_name = kwargs.get('lev_var_name','')
@@ -116,6 +123,8 @@ config_vars = create_config_vars(output_dir = output_dir,
                                 multiple_satellite_files = multiple_satellite_files,
                                 start_date = start_date,
                                 end_date = end_date,
+                                satellite_file_suffix = satellite_file_suffix,
+                                apply_quality_control = apply_quality_control,
                                 lat_var_name = latitude_var_name,
                                 lon_var_name = longitude_var_name,
                                 lev_var_name = level_var_name,

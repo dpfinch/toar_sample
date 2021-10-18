@@ -131,11 +131,11 @@ def calculate_box_air(t_array,p_array):
 def g_m2_from_vmr(altitude_array, surface_temp, press_array, o3_vmr):
     """
         Calculates g/m2 from volume mixing ratio assuming dry air given a give
-        altitude array (assumed to be in meters)
+        altitude array (assumed to be in meters) and surface temp
     """
     molec_g_air = 28.97 # molecular weight of air
     R_gas = 287.058 # Gas constant
-    avo_num = 6.0021409e23
+    avo_num = 6.0221409e23
     dry_air_lapse_rate = 9.8/1000 # degrees per m
 
     temp_arr = np.zeros(altitude_array.shape) # Create an empty array to input temperature
@@ -163,6 +163,23 @@ def g_m2_from_vmr(altitude_array, surface_temp, press_array, o3_vmr):
             o3_g_cm2[ob,lev] = air_amount * o3_vmr[ob,lev]
 
     return o3_g_cm2
+
+def model_vmr_to_gm2(config_vars, sampled_t, model_levels, sampled_o3,
+                    molec_weight = 48):
+    """
+        info here...
+    """
+    avo_num = 6.0221409e23
+
+    # Calculate molecules of air per cm2 in each level of model
+    model_cell_air = calculate_box_air(sampled_t, model_levels)
+    # Convert v/v to molecules per cm2
+    model_molec_o3_percm2 = np.multiply(model_cell_air, sampled_o3)
+    model_molec_o3_perm2 = model_molec_o3_percm2 * 1e4 # Convert to m2
+
+    model_g_m2 = (model_molec_o3_perm2 / avo_num) * molec_weight
+
+    return model_g_m2
 
 def regrid_column(o3_col,model_levels,sat_levels):
 
@@ -217,13 +234,65 @@ def DU_to_g_m2(spc_column, molc_weight = 48):
     """
         Convert dobson units to g/m2, default is for molecular weight of ozone (48)
     """
-    avo_num = 6.0021409e23
-    conv_rate = 2.687e20 # 1 DU == 2.687e20 molecules per square meter
+    avo_num = 6.0221409e23
+    conv_rate = 2.6867e20 # 1 DU == 2.687e20 molecules per square meter
     molec_per_m2 = spc_column * conv_rate
     mol_per_m2 = molec_per_m2 / avo_num
     g_per_m2 = mol_per_m2 * molc_weight
 
     return g_per_m2
+
+def molec_to_DU(column):
+    """
+        Convert column of molecules per cm2 to dobson units. Needed for RAL analysis
+    """
+    standard_temp = 273.15 # Zero celcius in kelvin
+    standard_pres = 101325.0 # Pressure (Pa)
+    boltz = 1.3806581e-23 # Boltzmann constant (JK-1)
+
+    dobson_units = 1e9 * column * boltz * (standard_temp/standard_pres)
+
+    return dobson_units
+
+def molec_column_calc(vmr_column):
+    """
+        Compute sub column amount from VMR on pressure levels. Needed for RAL analysis
+    """
+    avo_num = 6.0221409e23 # Avogadros number
+    g = 9.80665 # Gravity (m/s2)
+    molec_g_air = 28.97 # molecular weight of air
+
+    molec_col = vmr_column * avo_num/g/molec_g_air/1e2 # Taken from RAL IDL code
+
+    return molec_col
+
+def remove_model_file(config_vars, out_fname):
+    '''
+        Delete the downloaded model files once they have been sampled to save space
+    '''
+    # TODO: complete this function
+    if config_vars.verbose:
+        print("Deleting {}".format(out_fname))
+
+    if os.path.exists(out_fname):
+        os.remove(out_fname)
+    else:
+        print("Cannot find file {} to delete.".format(out_fname))
+
+
+def satellite_date_check(config_vars, satellite_info):
+    '''
+        Check the satellite files date and change the config_vars to match
+    '''
+    if satellite_info.start_date > config_vars.start_date:
+        print("--> Satellite records start from {}. \n Changing start date to match".format(
+            satellite_info.start_date.date()))
+        config_vars.start_date = satellite_info.start_date
+
+    if satellite_info.end_date < config_vars.end_date:
+        print("--> Satellite records end at {}. \n Changing end date to match".format(
+            satellite_info.end_date.date()))
+        config_vars.end_date = satellite_info.end_date
 ################################################################################
 ### END OF PROGRAM
 ################################################################################

@@ -14,6 +14,7 @@ import pdb
 class meta_data():
     def __init__(self,config_vars):
         self.satellite_file_dir = config_vars.satellite_file_dir
+        self.satellite_file_suffix = config_vars.satellite_file_suffix
         self.multiple_files = config_vars.multiple_satellite_files
         self.file_list = self.get_file_list()
         self.num_files = len(self.file_list)
@@ -23,8 +24,17 @@ class meta_data():
         '''
             This needs to be updated to be more general
         '''
-        files = glob('{}/**/*.nc'.format(self.satellite_file_dir), recursive = True)
+        files = glob('{}/**/*.{}'.format(self.satellite_file_dir,
+                                        self.satellite_file_suffix), recursive = True)
         files.sort()
+
+        if len(files) == 0:
+            print("*****************************************************************")
+            print("*** No satellite files found. Make sure config.py is correct. ***")
+            print("*** Looking for files here:                                   ***")
+            print("   ",self.satellite_file_dir)
+            print("*****************************************************************")
+            sys.exit()
 
         if config_vars.verbose:
             print("--> Found {} satellite files".format(len(files)))
@@ -74,8 +84,8 @@ class extract_data():
         o3_var = config_vars.o3_var_name
         ak_var = config_vars.ak_var_name
         prior_var = config_vars.prior_var_name
-        alt_var = config_var.altitude_var_name
-        pres_var = config_var.pressure_var_name
+        alt_var = config_vars.altitude_var_name
+        pres_var = config_vars.pressure_var_name
 
         self.latitude = nc_dataset.variables[lat_var][:]
         self.longitude = nc_dataset.variables[lon_var][:]
@@ -93,11 +103,11 @@ class extract_data():
         except AttributeError:
             print("** Cannot find units for prior variable. Assumiung same as ozone.")
             self.prior_units = self.o3_units
-        if config_var.include_altitude:
+        if config_vars.include_altitude:
             self.altitude = nc_dataset.variables[alt_var][:]
         else:
             self.altitude = None
-        if config_var.include_pressure:
+        if config_vars.include_pressure:
             self.pressure = nc_dataset.variables[pres_var][:]
         else:
             self.pressure = None
