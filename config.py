@@ -34,10 +34,9 @@ o3_var_name = 'o3_sub_col'
 # Averaging kernal variable name in satellite files
 ak_var_name = 'ak_rsc_tsc'
 # ak_var_name = 'observation_ops/averaging_kernel'
-# Prior variable name in satellite files
-prior_var_name = 'o3_ap_sub_col_model'
+# aPriori contribution to esimated sub column variable name in satellite files
+prior_var_name = 'imak_apr_sc'
 # prior_var_name = 'observation_ops/xa'
-
 # Apply quality control to the satellite retrieval. This currently only work for RAL data
 apply_quality_control = True
 

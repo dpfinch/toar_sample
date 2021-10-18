@@ -14,6 +14,10 @@ import pandas as pd
 import numpy as np
 import pathlib
 from scipy.interpolate import interp1d
+#  This prevents a userwarning about converting masked arrays to nans
+import warnings
+warnings.simplefilter("ignore", UserWarning)
+warnings.simplefilter("ignore", RuntimeWarning)
 
 class get_model_data():
     def __init__(self, config_vars, filename_format, sat_year):
@@ -111,28 +115,6 @@ def download_model_montly_data(config_vars,model_filepath):
         if config_vars.verbose:
             print("* Download complete *")
 
-def remove_prior():
-    '''
-        info here...
-    '''
-    # xhat = Ax + (I-A)x_prior + error term?
-    #
-    # We should have xhat, x_prior, and A.
-    # Richard, I believe the IMAK_SC is the (I-A)x_prior term Paul? Or is it just (I-A)?
-    # (xhat=GSC 'GomeSubColumn' in file. ASC=AprioriSubColumn)
-    #
-    # Many subtleties no doubt, primarily the assumption of the profile shape between
-    # pressure levels, which should be consistent with that used in the retrieval
-    # forward model. Please use the non-square AK (..._HR). The 'higher resolution'
-    # grid of 23 sub-columns (AK_RSC_TSC, extra in troposphere), rather than 19 actual
-    # retrieval levels, is provided to help reduce this error.
-    # Also, wee -lip- and -lin- notes below.
-    # See also the section of code below to help where it shows:
-    # ; get model & a priori sub-columns for high-res AK
-    # ; compute model_x_ak using high + low res sub-column
-    # Just to confirm imak_sc would be (I-A)x_prior (as sub column amounts)
-    pass
-
 def get_relevant_model_data(config_vars, sat_year):
     # Current catch for resolution
     if config_vars.model_temporal_res != '1 monthly':
@@ -176,7 +158,7 @@ def sample_model(config_vars, satellite_info):
         # Currently only set up for RAL files
         # TODO: make this more flexible
         # Have the same number of levels as the model data
-        model_o3_profile = np.zeros([len(sat_data.latitude),len(model_data.levels)])
+        model_o3_profile = np.zeros(sat_data.o3.shape)
 
         for sample_index, sample_row in satellite_df.iterrows():
 
@@ -198,33 +180,33 @@ def sample_model(config_vars, satellite_info):
                                             lat_index,
                                             lon_index]
 
-            model_g_m2 = utils.model_vmr_to_gm2(config_vars,sampled_t,model_data.levels,
-                                                sampled_o3,molec_weight = 48)
+            model_molec_cm2 = utils.model_vmr_to_molec_cm2(config_vars,sampled_t,
+                                                            model_data.levels,
+                                                            sampled_o3,molec_weight = 48)
 
-            model_molec_cm2 = utils.molec_column_calc(sampled_o3)
-
-            if type(model_g_m2) == np.ma.core.MaskedArray:
+            if type(model_molec_cm2) == np.ma.core.MaskedArray:
                 # Extract data from masked array
-                model_g_m2 = model_g_m2.filled()
+                model_molec_cm2 = model_molec_cm2.filled()
             if type(sat_data.levels) == np.ma.core.MaskedArray:
                 sat_data.levels = sat_data.levels.filled()
 
-            interped_model_o3 = utils.regrid_column(model_g_m2,
+            interped_model_o3 = utils.regrid_column(model_molec_cm2,
                                             model_data.levels,
                                             sat_data.levels)
-            pdb.set_trace()
+
             model_w_aks = apply_aks_to_model(config_vars,
                                             interped_model_o3,
                                             sat_data, sample_index)
 
+            model_w_prior = model_w_aks + sat_data.prior[sample_index]
 
-            pdb.set_trace()
-            model_o3_profile[sample_index,:] = sampled_o3
+
+            model_o3_profile[sample_index,:] = model_w_prior
 
         sat_data.model_o3 = model_o3_profile
 
         pdb.set_trace()
-    return model_o3
+    return sat_data
 
 
 def apply_aks_to_model(config_vars,model_column,sat_data, sample_index):
@@ -235,12 +217,12 @@ def apply_aks_to_model(config_vars,model_column,sat_data, sample_index):
         *** not needed *** => x' = xa + A(xcomp - xa)
         Where xa is the prior state, A is the averaging kernel, xcomp is the model
     """
-    sat_prior = sat_data.prior[sample_index]
+    # sat_prior = sat_data.prior[sample_index]
     sat_ak = sat_data.aks[sample_index]
 
-    sat_model_diff = model_column - sat_prior
-    applied_aks = sat_prior  + np.dot(sat_model_diff, sat_ak)
-    # applied_aks = np.dot(model_column, sat_ak)
+    # sat_model_diff = model_column - sat_prior
+    # applied_aks = sat_prior  + np.dot(sat_model_diff, sat_ak)
+    applied_aks = np.dot(model_column, sat_ak)
 
     return applied_aks
 

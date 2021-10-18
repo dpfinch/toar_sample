@@ -181,6 +181,21 @@ def model_vmr_to_gm2(config_vars, sampled_t, model_levels, sampled_o3,
 
     return model_g_m2
 
+
+def model_vmr_to_molec_cm2(config_vars, sampled_t, model_levels, sampled_o3,
+                    molec_weight = 48):
+    """
+        info here...
+    """
+    avo_num = 6.0221409e23
+
+    # Calculate molecules of air per cm2 in each level of model
+    model_cell_air = calculate_box_air(sampled_t, model_levels)
+    # Convert v/v to molecules per cm2
+    model_molec_o3_percm2 = np.multiply(model_cell_air, sampled_o3)
+
+    return model_molec_o3_percm2
+
 def regrid_column(o3_col,model_levels,sat_levels):
 
     """
@@ -230,17 +245,29 @@ def log_interp_sum_to_level(pres_col,amount_col,out_levels):
 
     return interp_column
 
-def DU_to_g_m2(spc_column, molc_weight = 48):
+def DU_to_g_cm2(spc_column, molc_weight = 48):
     """
-        Convert dobson units to g/m2, default is for molecular weight of ozone (48)
+        Convert dobson units to g/cm2, default is for molecular weight of ozone (48)
     """
     avo_num = 6.0221409e23
-    conv_rate = 2.6867e20 # 1 DU == 2.687e20 molecules per square meter
-    molec_per_m2 = spc_column * conv_rate
-    mol_per_m2 = molec_per_m2 / avo_num
-    g_per_m2 = mol_per_m2 * molc_weight
+    conv_rate = 2.6867e16 # 1 DU == 2.687e20 molecules per square centimeter
+    molec_per_cm2 = spc_column * conv_rate
+    mol_per_cm2 = molec_per_cm2 / avo_num
+    g_per_cm2 = mol_per_cm2 * molc_weight
 
-    return g_per_m2
+    return g_per_cm2
+
+
+def DU_to_molec_cm2(spc_column):
+    """
+        Convert dobson units to molec/cm2
+    """
+
+    conv_rate = 2.6867e16 # 1 DU == 2.687e20 molecules per square centimeter
+    molec_per_cm2 = spc_column * conv_rate
+
+    return molec_per_cm2
+
 
 def molec_to_DU(column):
     """
@@ -253,18 +280,6 @@ def molec_to_DU(column):
     dobson_units = 1e9 * column * boltz * (standard_temp/standard_pres)
 
     return dobson_units
-
-def molec_column_calc(vmr_column):
-    """
-        Compute sub column amount from VMR on pressure levels. Needed for RAL analysis
-    """
-    avo_num = 6.0221409e23 # Avogadros number
-    g = 9.80665 # Gravity (m/s2)
-    molec_g_air = 28.97 # molecular weight of air
-
-    molec_col = vmr_column * avo_num/g/molec_g_air/1e2 # Taken from RAL IDL code
-
-    return molec_col
 
 def remove_model_file(config_vars, out_fname):
     '''

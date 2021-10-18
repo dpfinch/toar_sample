@@ -86,12 +86,14 @@ class extract_data():
         prior_var = config_vars.prior_var_name
         alt_var = config_vars.altitude_var_name
         pres_var = config_vars.pressure_var_name
+        time_var = config_vars.time_var_name
 
         self.latitude = nc_dataset.variables[lat_var][:]
         self.longitude = nc_dataset.variables[lon_var][:]
         self.levels = nc_dataset.variables[lev_var][:]
         self.aks = nc_dataset.variables[ak_var][:]
         self.o3 = nc_dataset.variables[o3_var][:]
+
         try:
             self.o3_units = nc_dataset.variables[o3_var].units
         except AttributeError:
@@ -113,7 +115,7 @@ class extract_data():
             self.pressure = None
 
 
-        pass_time = nc_dataset.variables['time']
+        pass_time = nc_dataset.variables[time_var]
         pass_time_unit = pass_time.units
 
         self.time = utils.days_since_to_dt(pass_time, pass_time_unit)
@@ -133,9 +135,9 @@ class extract_data():
 
         if self.o3_units != 'v/v':
             if config_vars.verbose:
-                print("--> Need to convert ozone from units of {} to g/m2".format(self.o3_units))
+                print("--> Need to convert ozone from units of {} to molec/cm2".format(self.o3_units))
             if self.o3_units == 'DU':
-                self.o3 = utils.DU_to_g_m2(self.o3)
+                self.o3 = utils.DU_to_molec_cm2(self.o3)
             elif self.o3_units == 'ppb':
                 self.o3 = self.o3 * 1e9
             else:
@@ -145,9 +147,9 @@ class extract_data():
 
         if self.prior_units != 'v/v':
             if config_vars.verbose:
-                print("--> Need to convert prior from units of {} to g/m2".format(self.prior_units))
+                print("--> Need to convert prior from units of {} to molec/cm2".format(self.prior_units))
             if self.prior_units == 'DU':
-                self.prior = utils.DU_to_g_m2(self.prior)
+                self.prior = utils.DU_to_molec_cm2(self.prior)
             elif self.prior_units == 'ppb':
                 self.prior = self.prior * 1e9
             else:
@@ -165,8 +167,12 @@ class extract_data():
 
         nc_dataset.close()
 
-        # return pass_latitude, pass_longitude, pass_levels, pass_aks, pass_o3, pass_dt
-
+        if len(self.levels) not in self.aks.shape:
+            print("Number of levels in {} does not match any dimension in the averaging kernels.")
+            print("Number of levels = {}".format(len(self.levels)))
+            print("Averaging Kernels dimensions= {}".format(self.aks.shape))
+            print("They need to match.")
+            sys.exit()
 
 ################################################################################
 ### END OF PROGRAM
