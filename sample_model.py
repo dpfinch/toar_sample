@@ -1,7 +1,8 @@
 ################################################################################
 ################################################################################
-from config import config_vars
+from create_config_vars import config_vars
 import get_satellite_data
+from file_writer import output_to_file
 import utils
 import netCDF4 as nc
 import sys
@@ -144,6 +145,9 @@ def sample_model(config_vars, satellite_info):
     model_data = get_relevant_model_data(config_vars,
                                                 model_year)
 
+    if config_vars.verbose:
+        print("--> Sampling model at satellite observations coordinates.")
+
     # Loop through the satellite files
     for sat_file in satellite_info.file_list:
         sat_data = get_satellite_data.extract_data(config_vars,sat_file)
@@ -189,10 +193,13 @@ def sample_model(config_vars, satellite_info):
                 model_molec_cm2 = model_molec_cm2.filled()
             if type(sat_data.levels) == np.ma.core.MaskedArray:
                 sat_data.levels = sat_data.levels.filled()
+            if type(sat_data.ak_levels) == np.ma.core.MaskedArray:
+                sat_data.ak_levels = sat_data.ak_levels.filled()
+
 
             interped_model_o3 = utils.regrid_column(model_molec_cm2,
                                             model_data.levels,
-                                            sat_data.levels)
+                                            sat_data.ak_levels)
 
             model_w_aks = apply_aks_to_model(config_vars,
                                             interped_model_o3,
@@ -205,7 +212,9 @@ def sample_model(config_vars, satellite_info):
 
         sat_data.model_o3 = model_o3_profile
 
-        pdb.set_trace()
+        # Send sampled model to netcdf file
+        output_to_file(config_vars, sat_data)
+
     return sat_data
 
 
@@ -226,19 +235,14 @@ def apply_aks_to_model(config_vars,model_column,sat_data, sample_index):
 
     return applied_aks
 
-def output_to_file(config_vars):
-    """
-        Output the sampled model to netcdf file.
-    """
-    pass
-
 if __name__ == "__main__":
     # Read in the satellite data and find what files are needed
     satellite_info = get_satellite_data.meta_data(config_vars)
     utils.satellite_date_check(config_vars, satellite_info)
 
     # Sample the model at the satellite path coordinates
-    sampled_o3 = sample_model(config_vars, satellite_info)
+    sat_data = sample_model(config_vars, satellite_info)
+
     pdb.set_trace()
 
 

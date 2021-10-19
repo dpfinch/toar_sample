@@ -32,6 +32,17 @@ def days_since_to_dt(time_arr, since_datetime):
     return dt_time_arr
 
 
+def dt_to_seconds_since(time_arr):
+    """
+        Convert datetime object array into seconds since 01 01 1990.
+        This is for standardising file output
+    """
+
+    start_date = dt(1990,1,1,0,0)
+    time_since_arr = [(x - start_date).total_seconds() for x in time_arr]
+
+    return time_since_arr
+
 def convert_time_since_units(since_datetime):
     '''
         Find what the approriate units are to parse
