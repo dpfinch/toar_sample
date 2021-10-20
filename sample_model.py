@@ -26,7 +26,7 @@ class get_model_data():
         self.filepath_format = os.path.join(config_vars.model_download_path,
                                             filename_format)
 
-        model_out_data = self.extract_model_data(sat_year)
+        model_out_data = self.extract_model_data(sat_year, config_vars)
         self.latitude = model_out_data[0]
         self.longitude = model_out_data[1]
         self.levels = model_out_data[2]
@@ -35,7 +35,7 @@ class get_model_data():
         self.model_t = model_out_data[5]
         self.model_ps = model_out_data[6]
 
-    def extract_model_data(self, sat_year):
+    def extract_model_data(self, sat_year, config_vars):
         """
             Info here ...
         """
@@ -45,7 +45,7 @@ class get_model_data():
 
         for file_test in [model_o3_filename, model_t_filename, model_ps_filename]:
             if not os.path.isfile(file_test):
-                print("--> Unable to find model file {}".format(file_test))
+                print("** Unable to find model file {}".format(file_test))
                 return None, None, None, None, None, None, None
 
         model_o3_dataset = nc.Dataset(model_o3_filename,'r')
@@ -76,6 +76,10 @@ class get_model_data():
         model_ps = model_ps_dataset.variables['ps'][:]
         model_ps_dataset.close()
 
+        if not config_vars.keep_model_downloads:
+            for file_to_delete in [model_o3_filename, model_t_filename, model_ps_filename]:
+                utils.remove_model_file(config_vars,file_to_delete)
+
         return (model_latitude, model_longitude, model_levels, model_dt,
                 model_o3, model_t, model_ps)
 
@@ -95,17 +99,18 @@ def download_model_montly_data(config_vars,model_filepath):
 
     if config_vars.verbose:
         print("--> Downloading {} to {}".format(nc_filename,out_fname))
-
+    if config_vars.start_date.year > 2019:
+        print("** No model data availble beyond 2019 at this stage.")
     # Test that the model repo url works
     try:
         response = get(full_url)
         response.raise_for_status()
     except HTTPError as http_err:
-        print('*** HTTP error occurred while trying to access model repo:')
+        print('** HTTP error occurred while trying to access model repo:')
         print(f'{http_err}')
         sys.exit()
     except Exception as err:
-        print('An error occurred while trying to access model repo:')
+        print('** An error occurred while trying to access model repo:')
         print(f'{err}')
         sys.exit()
     else:
@@ -114,7 +119,7 @@ def download_model_montly_data(config_vars,model_filepath):
             dwnld_file.write(response.content)
 
         if config_vars.verbose:
-            print("* Download complete *")
+            print("## Download complete ##")
 
 def get_relevant_model_data(config_vars, sat_year):
     # Current catch for resolution
@@ -150,19 +155,41 @@ def sample_model(config_vars, satellite_info):
 
     # Loop through the satellite files
     for sat_file in satellite_info.file_list:
+        if config_vars.verbose:
+            print("    Sampling file: {}".format(sat_file))
         sat_data = get_satellite_data.extract_data(config_vars,sat_file)
 
-        satellite_df = pd.DataFrame({'sat_lat':sat_data.latitude,
-                                    'sat_lon':sat_data.longitude},
-                                    index = sat_data.time)
-        satellite_df.index.name = 'Date_Time'
+        if len(sat_data.latitude.shape) > 1 or len(sat_data.longitude.shape) > 1:
+            print("** Latitude or longitude dimension are not 1D. Cannot process that currently.")
+            print("** Quitting.")
+            sys.exit()
+
+        # If the levels are set then repeat to match dimension of lat/lon
+        if len(sat_data.levels.shape) == 1:
+            sat_data.levels = np.tile(sat_data.levels,(len(sat_data.latitude),1))
+        if len(sat_data.ak_levels.shape) == 1:
+            sat_data.ak_levels = np.tile(sat_data.ak_levels,(len(sat_data.latitude),1))
+
+        # Create dataframe to hold the satellite coords.
+        # Put levels as empty for time being. To be replaced next.
+        satellite_df = pd.DataFrame({'Date_Time':sat_data.time,
+                                    'sat_lat':sat_data.latitude,
+                                    'sat_lon':sat_data.longitude,
+                                    'sat_lev':0,
+                                    'ak_lev':0},
+                                    dtype = object)
+
+        satellite_df = utils.add_levs_to_df(satellite_df, sat_data)
         satellite_df.reset_index(inplace = True)
 
         # Create empty array to fill with sampled model
-        # Currently only set up for RAL files
         # TODO: make this more flexible
-        # Have the same number of levels as the model data
+        # Have the same number of levels as the satellite data
         model_o3_profile = np.zeros(sat_data.o3.shape)
+
+        # A temporay fix for prevent multiple print outs from the verbose config
+        # Verbose is swtich off in this loop temporarily
+        verbose_bool = config_vars.verbose
 
         for sample_index, sample_row in satellite_df.iterrows():
 
@@ -191,15 +218,16 @@ def sample_model(config_vars, satellite_info):
             if type(model_molec_cm2) == np.ma.core.MaskedArray:
                 # Extract data from masked array
                 model_molec_cm2 = model_molec_cm2.filled()
-            if type(sat_data.levels) == np.ma.core.MaskedArray:
-                sat_data.levels = sat_data.levels.filled()
-            if type(sat_data.ak_levels) == np.ma.core.MaskedArray:
-                sat_data.ak_levels = sat_data.ak_levels.filled()
+            if type(sample_row.sat_lev) == np.ma.core.MaskedArray:
+                sample_row.sat_lev = sample_row.sat_lev.filled()
+            if type(sample_row.ak_lev) == np.ma.core.MaskedArray:
+                sample_row.ak_lev = sample_row.ak_lev.filled()
 
-
+            sample_row = utils.level_check(config_vars, sample_index,
+                                            sample_row, sat_data)
             interped_model_o3 = utils.regrid_column(model_molec_cm2,
                                             model_data.levels,
-                                            sat_data.ak_levels)
+                                            sample_row.ak_lev)
 
             model_w_aks = apply_aks_to_model(config_vars,
                                             interped_model_o3,
@@ -210,6 +238,8 @@ def sample_model(config_vars, satellite_info):
 
             model_o3_profile[sample_index,:] = model_w_prior
 
+        # Turn verbose back on if it was swtiched on before.
+        config_vars.verbose = verbose_bool
         sat_data.model_o3 = model_o3_profile
 
         # Send sampled model to netcdf file
@@ -222,9 +252,6 @@ def apply_aks_to_model(config_vars,model_column,sat_data, sample_index):
     """
         Apply the averaging kernals from the satellite files to the sampled model
         Averaging kernels applied by the dot product of model and aks from sat data
-
-        *** not needed *** => x' = xa + A(xcomp - xa)
-        Where xa is the prior state, A is the averaging kernel, xcomp is the model
     """
     # sat_prior = sat_data.prior[sample_index]
     sat_ak = sat_data.aks[sample_index]
@@ -236,6 +263,7 @@ def apply_aks_to_model(config_vars,model_column,sat_data, sample_index):
     return applied_aks
 
 if __name__ == "__main__":
+
     # Read in the satellite data and find what files are needed
     satellite_info = get_satellite_data.meta_data(config_vars)
     utils.satellite_date_check(config_vars, satellite_info)
@@ -243,8 +271,9 @@ if __name__ == "__main__":
     # Sample the model at the satellite path coordinates
     sat_data = sample_model(config_vars, satellite_info)
 
-    pdb.set_trace()
-
+    print("**************************************")
+    print("*******   Analysis Complete!   *******")
+    print("**************************************")
 
 
 ################################################################################

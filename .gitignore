@@ -9,3 +9,4 @@ ral_data_scrape.py
 .DS_Store
 model_download/
 __pycache__/
+output.txt

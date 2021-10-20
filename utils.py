@@ -50,19 +50,23 @@ def convert_time_since_units(since_datetime):
     '''
     if type(since_datetime) == str:
         time_str_array = since_datetime.split()
-        if time_str_array[0].lower() in ['seconds','hours','days','months']:
-            time_unit = time_str_array[0].lower()
-            datetime_str = '{} {}'.format(time_str_array[2],time_str_array[3])
-            # Use pandas datetime function as it is more forgiving
-            unit_base_time = pd.to_datetime(datetime_str)
-            return time_unit, unit_base_time
+        for time_unit_str in time_str_array:
+            if time_unit_str.lower() in ['seconds','hours','days','months']:
+                time_unit = time_unit_str.lower()
+                # Split on the word 'since'
+                since_split = since_datetime.lower().split('since')[1]
+                next_time_split = since_split.split()
+                datetime_str = '{} {}'.format(next_time_split[0],next_time_split[1])
+                # Use pandas datetime function as it is more forgiving
+                unit_base_time = pd.to_datetime(datetime_str)
+                return time_unit, unit_base_time
 
         else:
-            print('Cannot parse units {}'.format(since_datetime))
+            print('** Cannot parse units {}'.format(since_datetime))
             return None, None
 
     else:
-        print('Time units not string type')
+        print('** Time units not string type')
         return None, None
 
 def get_coord_value(coord, model_coord_range):
@@ -71,7 +75,7 @@ def get_coord_value(coord, model_coord_range):
     """
 
     if coord > 360 or coord < -360:
-        print("Satellite coordinate outside range -360 - 360 degrees")
+        print("** Satellite coordinate outside range -360 - 360 degrees")
         return 0
 
     value = min(range(len(model_coord_range)),
@@ -282,7 +286,8 @@ def DU_to_molec_cm2(spc_column):
 
 def molec_to_DU(column):
     """
-        Convert column of molecules per cm2 to dobson units. Needed for RAL analysis
+        Convert column of molecules per cm2 to dobson units.
+        Might be redundant.
     """
     standard_temp = 273.15 # Zero celcius in kelvin
     standard_pres = 101325.0 # Pressure (Pa)
@@ -292,18 +297,28 @@ def molec_to_DU(column):
 
     return dobson_units
 
-def remove_model_file(config_vars, out_fname):
+def molm2_to_molec_cm2(spc_array):
+    """
+         Convert moles/m2 to molec/cm2
+    """
+    avo_num = 6.0221409e23
+    molec_per_m2 = spc_array * avo_num
+    molec_per_cm2 = molec_per_m2 * 1e4
+
+    return molec_per_cm2
+
+def remove_model_file(config_vars, file_to_delete):
     '''
         Delete the downloaded model files once they have been sampled to save space
     '''
     # TODO: complete this function
     if config_vars.verbose:
-        print("Deleting {}".format(out_fname))
+        print("Deleting {}".format(file_to_delete))
 
-    if os.path.exists(out_fname):
-        os.remove(out_fname)
+    if os.path.exists(file_to_delete):
+        os.remove(file_to_delete)
     else:
-        print("Cannot find file {} to delete.".format(out_fname))
+        print("--> Cannot find file {} to delete.".format(file_to_delete))
 
 
 def satellite_date_check(config_vars, satellite_info):
@@ -319,6 +334,125 @@ def satellite_date_check(config_vars, satellite_info):
         print("--> Satellite records end at {}. \n Changing end date to match".format(
             satellite_info.end_date.date()))
         config_vars.end_date = satellite_info.end_date
+
+def add_levs_to_df(satellite_df,sat_data):
+    """
+        Adds the satellite levels to the dataframe of satellite data.
+        Uable to add in the usual manner as they are 2D arrays (n_profiles, lev).
+        Bit of a bodge way of doing it but works for now
+    """
+    o3_levs = sat_data.levels
+    ak_levs = sat_data.ak_levels
+
+    if not o3_levs.shape[0] == ak_levs.shape[0]:
+        print("** Ozone levels and AK levels don't match. Quitting.")
+        sys.exit()
+
+    for profile_num in range(o3_levs.shape[0]):
+        satellite_df.at[profile_num,'sat_lev'] = o3_levs[profile_num]
+        satellite_df.at[profile_num,'ak_lev'] = ak_levs[profile_num]
+
+    return satellite_df
+
+def level_check(config_vars, sample_index, sample_row, sat_data):
+    """
+        Check the levels match the profiles of ozone and the averaging kernels.
+        Its assumed that if the levels are one greater than the profiles that they
+        represent the level edges and therefore we can find the midpoint of the level
+        and use that.
+    """
+
+    o3_lev = sample_row.sat_lev
+    ak_lev = sample_row.ak_lev
+
+    # Replace negative values
+    o3_lev[o3_lev < 0] = np.nanmax(o3_lev)
+    ak_lev[ak_lev < 0] = np.nanmax(ak_lev)
+
+    if len(o3_lev) not in sat_data.o3.shape:
+        if config_vars.verbose:
+            print("--> Levels provided do not match O3 profile.")
+    if len(o3_lev) - 1 in sat_data.o3.shape:
+        if config_vars.verbose:
+            print("--> Levels are one greater than O3 profile.")
+            print("    Assuming they are level edges and will interpolate between them.")
+            print("    Calculating mid point between levels. Assuming linear interpolation.")
+
+        num_levs = len(o3_lev)
+        level_diffs = np.diff(o3_lev)
+
+        if all([o3_lev[x] >= o3_lev[x+1] for x in range(num_levs -1)]):
+            levels_mids = o3_lev[1:] - (level_diffs/2)
+        elif all([o3_lev[x] <= o3_lev[x+1] for x in range(num_levs -1)]):
+            levels_mids = o3_lev[:-1] - (level_diffs/2)
+        else:
+            print("** Levels are not in order. Quitting")
+            sys.exit()
+        sample_row.sat_lev = levels_mids
+        sat_data.sat_level_mids[sample_index,:] = levels_mids
+    else:
+        print("** Quiting.")
+        sys.exit()
+
+    if len(ak_lev) not in sat_data.aks.shape:
+        if config_vars.verbose:
+            print("--> Averaging kernel levels provided do not match AK profile.")
+    if len(ak_lev) - 1 in sat_data.aks.shape:
+        if config_vars.verbose:
+            print("--> AK levels are one greater than AK profile.")
+            print("    Assuming they are level edges and will interpolate between them.")
+            print("    Calculating mid point between AK levels. Assuming linear interpolation.")
+
+        num_levs = len(ak_lev)
+        level_diffs = np.diff(ak_lev)
+
+        if all([ak_lev[x] >= ak_lev[x+1] for x in range(num_levs -1)]):
+            levels_mids = ak_lev[1:] - (level_diffs/2)
+        elif all([ak_lev[x] <= ak_lev[x+1] for x in range(num_levs -1)]):
+            levels_mids = ak_lev[:-1] - (level_diffs/2)
+        else:
+            print("** Averaging kernel levels are not in order. Quitting")
+            sys.exit()
+        sample_row.ak_lev = levels_mids
+        sat_data.ak_level_mids[sample_index,:] = levels_mids
+
+
+    else:
+        print("** Quiting.")
+        sys.exit()
+    config_vars.verbose = False
+    return sample_row
+
+def deal_with_IASI_time(config_vars,nc_dataset,only_start = False):
+    """
+        IASI satellite files seem to have a less straight-forward convention for
+        time of pass. And also varies between earlier and later years.
+    """
+    pass_time = nc_dataset.variables[config_vars.time_var_name]
+    nc_filename = os.path.basename(nc_dataset.filepath())
+
+    try:
+        if 'since' not in pass_time.units.split(' '):
+            if  'since' not in pass_time.long_name.split(' '):
+                print("** Cannot understand units: {}.")
+                print("** Report error on Github. Quitting.")
+                sys.exit()
+            else:
+                pass_time_unit = pass_time.long_name # Unit description in long name
+                pass_dt = days_since_to_dt(pass_time, pass_time_unit)
+    except AttributeError:
+        # Assuming if there are no units then the time variable is the format:
+        # "hour in the day as hhmmss" and date from filename. Which is provided as an int
+        # Assumes filename format as 'IASI_FORLI_O3_metopb_YYYMMDD_vyyyddmm.nc'
+        # We want the first YYYYMMDD (other is version date I think)
+        date_str = nc_filename[21:29]
+        # time_str = str(pass_time[0]).zfill(6)  # Get first time from integer format
+        if only_start:
+            pass_dt = dt.strptime(date_str+str(pass_time[0]).zfill(6),'%Y%m%d%H%M%S')
+        else:
+            pass_dt = [dt.strptime(date_str+str(ts).zfill(6),'%Y%m%d%H%M%S') for ts in pass_time]
+
+    return pass_dt
 ################################################################################
 ### END OF PROGRAM
 ################################################################################

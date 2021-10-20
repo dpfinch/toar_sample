@@ -1,6 +1,5 @@
 ################################################################################
 ################################################################################
-from config import config_vars
 import netCDF4 as nc
 import sys
 import os
@@ -15,12 +14,13 @@ class meta_data():
     def __init__(self,config_vars):
         self.satellite_file_dir = config_vars.satellite_file_dir
         self.satellite_file_suffix = config_vars.satellite_file_suffix
-        self.multiple_files = config_vars.multiple_satellite_files
-        self.file_list = self.get_file_list()
+        # Remove the full stop infront of the suffix if there is one.
+        self.satellite_file_suffix = self.satellite_file_suffix.replace('.','')
+        self.file_list = self.get_file_list(config_vars)
         self.num_files = len(self.file_list)
         self.start_date, self.end_date = self.get_satellite_date_range(config_vars)
 
-    def get_file_list(self):
+    def get_file_list(self, config_vars):
         '''
             This needs to be updated to be more general
         '''
@@ -37,7 +37,11 @@ class meta_data():
             sys.exit()
 
         if config_vars.verbose:
-            print("--> Found {} satellite files".format(len(files)))
+            if len(files) > 1:
+                suffix = 's'
+            else:
+                suffix = ''
+            print("--> Found {} satellite file{}".format(len(files),suffix))
         return files
 
     def get_satellite_date_range(self, config_vars):
@@ -49,8 +53,11 @@ class meta_data():
         # Open the first satellite file to get start date
         nc_dataset = nc.Dataset(self.file_list[0],'r')
         pass_time = nc_dataset.variables[config_vars.time_var_name]
-        pass_time_unit = pass_time.units
-        pass_dt = utils.days_since_to_dt(pass_time, pass_time_unit)
+        if config_vars.satellite_product != 'IASI':
+            pass_time_unit = pass_time.units
+            pass_dt = utils.days_since_to_dt(pass_time, pass_time_unit)
+        else:
+            pass_dt = utils.deal_with_IASI_time(config_vars,nc_dataset, only_start = True)
         if type(pass_dt) == list:
             start_date = pass_dt[0]
         else:
@@ -60,8 +67,11 @@ class meta_data():
         # Open last satellite file to get end date
         nc_dataset = nc.Dataset(self.file_list[-1],'r')
         pass_time = nc_dataset.variables[config_vars.time_var_name]
-        pass_time_unit = pass_time.units
-        pass_dt = utils.days_since_to_dt(pass_time, pass_time_unit)
+        if config_vars.satellite_product != 'IASI':
+            pass_time_unit = pass_time.units
+            pass_dt = utils.days_since_to_dt(pass_time, pass_time_unit)
+        else:
+            pass_dt = utils.deal_with_IASI_time(config_vars,nc_dataset, only_start = True)
         if type(pass_dt) == list:
             end_date = pass_dt[-1]
         else:
@@ -85,8 +95,6 @@ class extract_data():
         o3_var = config_vars.o3_var_name
         ak_var = config_vars.ak_var_name
         prior_var = config_vars.prior_var_name
-        alt_var = config_vars.altitude_var_name
-        pres_var = config_vars.pressure_var_name
         time_var = config_vars.time_var_name
 
         self.latitude = nc_dataset.variables[lat_var][:]
@@ -96,9 +104,18 @@ class extract_data():
         self.aks = nc_dataset.variables[ak_var][:]
         self.o3 = nc_dataset.variables[o3_var][:]
 
-        #  Apply level check to make sure dimensions match
-        self.level_check()
+        # Create variable to contain the mid levels of the array
+        self.sat_level_mids = np.full(self.o3.shape,-999)
+        self.ak_level_mids= np.full(self.aks.shape[:2],-999)
+        # Convert time variable into datetime object
+        pass_time = nc_dataset.variables[time_var]
+        if config_vars.satellite_product != 'IASI':
+            pass_time_unit = pass_time.units
+            self.time = utils.days_since_to_dt(pass_time, pass_time_unit)
+        else:
+            self.time = utils.deal_with_IASI_time(config_vars,nc_dataset)
 
+        # Get units for ozone
         try:
             self.o3_units = nc_dataset.variables[o3_var].units
         except AttributeError:
@@ -110,20 +127,8 @@ class extract_data():
         except AttributeError:
             print("--> Cannot find units for prior variable. Assumiung same as ozone.")
             self.prior_units = self.o3_units
-        if config_vars.include_altitude:
-            self.altitude = nc_dataset.variables[alt_var][:]
-        else:
-            self.altitude = None
-        if config_vars.include_pressure:
-            self.pressure = nc_dataset.variables[pres_var][:]
-        else:
-            self.pressure = None
 
-        pass_time = nc_dataset.variables[time_var]
-        pass_time_unit = pass_time.units
-
-        self.time = utils.days_since_to_dt(pass_time, pass_time_unit)
-
+        # Get units for the prior
         if self.prior_units != self.o3_units:
             print("** Units for prior do not match units for ozone. Quitting.")
             sys.exit()
@@ -156,6 +161,8 @@ class extract_data():
                 print("--> Converting prior from units of {} to molec/cm2".format(self.prior_units))
             if self.prior_units == 'DU':
                 self.prior = utils.DU_to_molec_cm2(self.prior)
+            elif self.prior_units == 'mol m-2':
+                self.prior = utils.molm2_to_molec_cm2(self.prior)
             elif self.prior_units == 'ppb':
                 self.prior = self.prior * 1e9
             else:
@@ -163,74 +170,32 @@ class extract_data():
                 sys.exit()
             self.prior_units = 'molec cm-2'
 
+        # Get units for levels
+        try:
+            self.level_units = nc_dataset.variables[lev_var].units
+        except AttributeError:
+            print("--> Cannot find units for level. Assuming hPa.")
+            self.level_units = 'hPa'
+        if self.level_units.lower() not in ['hpa','hectopascal']:
+            if self.level_units.lower() in ['pa','pascal']:
+                self.levels = self.levels / 100
+                self.level_units = 'hPa'
+            else:
+                print("** Unable to convert units of {} for the levels at this time".format(self.level_units))
+                print("** Qutting.")
+                sys.exit()
+        else:
+            self.level_units = 'hPa' # Just to makes sure its corrrectly written.
+
         nc_dataset.close()
         #  Check if the averaging kernals have some matching dimension to the ozone levels.
         # Otherwise we cannot map the kernels to the profile.
-        if len(self.levels) not in self.aks.shape:
-            print("** Number of levels in {} does not match any dimension in the averaging kernels.".format(lev_var))
-            print("** Number of levels = {}".format(len(self.ak_levels)))
-            print("** Averaging kernels dimensions = {}".format(self.aks.shape))
-            print("** They need to match. Quitting.")
-            sys.exit()
-
-    def level_check(self):
-        """
-            Check the levels match the profiles of ozone and the averaging kernels.
-            Its assumed that if the levels are one greater than the profiles that they
-            represent the level edges and therefore we can find the midpoint of the level
-            and use that.
-        """
-        if self.levels.ndim == 1:
-            if len(self.levels) not in self.o3.shape:
-                print("--> Levels provided do not match O3 profile.")
-            if len(self.levels) - 1 in self.o3.shape:
-                print("--> Levels are one greater than O3 profile.")
-                print("    Assuming they are level edges and will interpolate between them.")
-                print("    Calculating mid point between levels. Assuming linear interpolation.")
-
-                current_levels = self.levels
-                num_levs = len(current_levels)
-                level_diffs = np.diff(current_levels)
-
-                if all([current_levels[x] > current_levels[x+1] for x in range(num_levs -1)]):
-                    levels_mids = current_levels[1:] - (level_diffs/2)
-                elif all([current_levels[x] < current_levels[x+1] for x in range(num_levs -1)]):
-                    levels_mids = current_levels[:-1] - (level_diffs/2)
-                else:
-                    print("** Levels are not in order. Quitting")
-                    sys.exit()
-                self.levels = levels_mids
-            else:
-                print("** Quiting.")
-                sys.exit()
-
-        if self.ak_levels.ndim == 1:
-            if len(self.ak_levels) not in self.aks.shape:
-                print("--> Averaging kernel levels provided do not match AK profile.")
-            if len(self.ak_levels) - 1 in self.aks.shape:
-                print("--> AK levels are one greater than AK profile.")
-                print("    Assuming they are level edges and will interpolate between them.")
-                print("    Calculating mid point between AK levels. Assuming linear interpolation.")
-
-                current_levels = self.ak_levels
-                num_levs = len(current_levels)
-                level_diffs = np.diff(current_levels)
-
-                if all([current_levels[x] > current_levels[x+1] for x in range(num_levs -1)]):
-                    levels_mids = current_levels[1:] - (level_diffs/2)
-                elif all([current_levels[x] < current_levels[x+1] for x in range(num_levs -1)]):
-                    levels_mids = current_levels[:-1] - (level_diffs/2)
-                else:
-                    print("** Averaging kernel levels are not in order. Quitting")
-                    sys.exit()
-                self.ak_levels = levels_mids
-
-            else:
-                print("** Quiting.")
-                sys.exit()
-        else:
-            print("** Level array is not one dimensional and this program cannot handle that yet.")
-            print("** Raise this issue on the GitHub repo and it'll get fixed.")
+        # if len(self.levels) not in self.aks.shape:
+        #     print("** Number of levels in {} does not match any dimension in the averaging kernels.".format(lev_var))
+        #     print("** Number of levels = {}".format(len(self.ak_levels)))
+        #     print("** Averaging kernels dimensions = {}".format(self.aks.shape))
+        #     print("** They need to match. Quitting.")
+        #     sys.exit()
 
 ################################################################################
 ### END OF PROGRAM
