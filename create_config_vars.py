@@ -13,7 +13,6 @@ class create_config_vars:
     def __init__(self,**kwargs):
 
         self.output_dir = kwargs.get('output_dir','')
-        self.output_filename_prefix = kwargs.get('output_filename_prefix','')
         self.satellite_product = kwargs.get('satellite_product','')
         self.satellite_file_dir = kwargs.get('satellite_file_dir','')
         self.satellite_file_suffix = kwargs.get('satellite_file_suffix','nc')
@@ -54,7 +53,7 @@ if model_temporal_res.split()[1].lower() not in ['hourly','daily','monthly']:
     sys.exit()
 
 if np.sum(list(satellite_product.values())) > 1:
-    print("** More than one satellite product has been selected. Only choose one.")
+    print("** More than one satellite product has been selected in config.py. Only choose one.")
     sys.exit()
 
 elif np.sum(list(satellite_product.values())) < 1:
@@ -70,7 +69,6 @@ if ak_level_var_name == None:
     ak_level_var_name = level_var_name
 
 config_vars = create_config_vars(output_dir = output_dir,
-                                output_filename_prefix = output_filename_prefix,
                                 satellite_product = satellite_product_name,
                                 satellite_file_dir =  satellite_file_dir,
                                 start_date = start_date,

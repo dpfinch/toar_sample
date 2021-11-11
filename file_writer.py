@@ -20,7 +20,8 @@ def output_to_file(config_vars, sat_data):
     first_time_str = sat_data.time[0].strftime('%Y%m%d%H%M')
     last_time_str = sat_data.time[-1].strftime('%Y%m%d%H%M')
 
-    outfilename = 'Sampled_Model_{}_{}.nc'.format(first_time_str,last_time_str)
+    outfilename = '{}_Sampled_Model_{}_{}.nc'.format(config_vars.satellite_product,
+                                                    first_time_str,last_time_str)
 
     outfile_full_path = (os.path.join(config_vars.output_dir, outfilename))
 

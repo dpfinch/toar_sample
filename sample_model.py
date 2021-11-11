@@ -191,8 +191,15 @@ def sample_model(config_vars, satellite_info):
         # Verbose is swtich off in this loop temporarily
         verbose_bool = config_vars.verbose
 
-        for sample_index, sample_row in satellite_df.iterrows():
+        # Unimportant code to monitor progress
+        progress_monitor = 0
+        num_profiles_20th = int(len(satellite_df)/20)
 
+        for sample_index, sample_row in satellite_df.iterrows():
+            if sample_index%num_profiles_20th == 0: # Give a print out every 5%
+                if verbose_bool:
+                    print("Roughly {}% of profiles in this file complete.".format(progress_monitor))
+                progress_monitor += 5
             # Find the lat/lon index of the model that matches best with the satellite
             lat_index = utils.get_coord_value(sample_row.sat_lat, model_data.latitude)
             lon_index = utils.get_coord_value(sample_row.sat_lon, model_data.longitude)
@@ -266,6 +273,7 @@ if __name__ == "__main__":
 
     # Read in the satellite data and find what files are needed
     satellite_info = get_satellite_data.meta_data(config_vars)
+    pdb.set_trace()
     utils.satellite_date_check(config_vars, satellite_info)
 
     # Sample the model at the satellite path coordinates
