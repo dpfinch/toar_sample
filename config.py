@@ -1,7 +1,7 @@
 ################################################################################
 #################### Configuration file for TOAR sampling code #################
 
-output_dir = '/Volumes/DougsHD/Output/'
+output_dir = '/'
 
 # Set which satellite product you are using. Make sure all others are set to False
 satellite_product = {
@@ -11,7 +11,7 @@ satellite_product = {
     'OMPS-NPP': True,
 }
 
-satellite_file_dir = '/Volumes/DougsHD/OMPS-NPP/'
+satellite_file_dir = '/'
 # Set the file suffix for the satellite data. (e.g. nc for netcdf)
 satellite_file_suffix = 'h5'
 
