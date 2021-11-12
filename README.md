@@ -54,7 +54,7 @@ The first step is to edit the `config.py`  file with the relevant information. T
 
 `start_date/end_date` -Set the start and end dates for you satellite data series. The program automatically checks if they are suitable for the available model data
 
-`x_var_name` - The following variables are the names of the variables within the satellite that the program needs (e.g. latitude, longitude etc). These should be self explanitory. If the satellite file being used does not have that product then write `None`. 
+`x_var_name` - The following variables are the names of the variables within the satellite that the program needs (e.g. latitude, longitude etc). These should be self explanitory. If the satellite file being used does not have that product then write `None`. if the variable is within a group in the netcdf file then write it as `group_name/var_name`. 
 
 If the time variable is split across multiple variables (e.g. year, day of year & second in day) then write these as a Python list (in square brackets, separated by commas) e.g. `['year','day_of_year','second_in_day']` and the program will try and interpret this into one date & time. 
 
