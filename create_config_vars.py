@@ -35,9 +35,7 @@ class create_config_vars:
         model_download_path = os.path.join(self.output_dir, 'model_download')
         self.model_download_path = model_download_path
 
-# Make sure the model url ends with a slash otherwise the URL join doesn't work
-if model_repo_url[-1] != '/':
-    model_repo_url = model_repo_url + '/'
+
 # Make sure the model temporal resolution makes sense
 try:
     num_res = int(model_temporal_res.split()[0])
@@ -68,6 +66,25 @@ print("### SAMPLING MODEL FOR {} ###".format(satellite_product_name))
 if ak_level_var_name == None:
     ak_level_var_name = level_var_name
 
+if CAMS_model and not NASA_TES_model:
+    model_type = 'CAMS_model'
+elif NASA_TES_model and not CAMS_model:
+    print("** Code not tested with NASA model data, this will be addressed in a later release")
+    model_type = 'NASA_model'
+    sys.exit()
+elif not NASA_TES_model and not CAMS_model:
+    print("No model selected, defaulting to CAMS")
+    model_type = 'CAMS_model'
+else:
+    print("Both models selected, defaulting to CAMS")
+    model_type = 'CAMS_model'   
+
+# This is the model URL for monthly NASA TES model output - probably not needed
+model_repo_url = 'https://tes.jpl.nasa.gov/raw-data/tcr-2_files/monthly-mean_emissions/'
+# Make sure the model url ends with a slash otherwise the URL join doesn't work
+if model_repo_url[-1] != '/':
+    model_repo_url = model_repo_url + '/'
+
 config_vars = create_config_vars(output_dir = output_dir,
                                 satellite_product = satellite_product_name,
                                 satellite_file_dir =  satellite_file_dir,
@@ -83,6 +100,7 @@ config_vars = create_config_vars(output_dir = output_dir,
                                 o3_var_name = o3_var_name,
                                 ak_var_name = ak_var_name,
                                 prior_var_name = prior_var_name,
+                                model_type = model_type,
                                 model_repo_url = model_repo_url,
                                 keep_model_downloads = keep_model_downloads,
                                 verbose = verbose,

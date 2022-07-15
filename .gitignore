@@ -1,6 +1,7 @@
 bin/
 lib/
 docs/
+include/
 pyvenv.cfg
 *.pyc
 test_driver.py
