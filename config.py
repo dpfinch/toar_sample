@@ -21,7 +21,7 @@ end_date = 2019,8,31
 
 #### SATELLITE VARIABLES ##### - replace as needed ####
 # Latitude variable name in satellite files
-latitude_var_name = 'lat
+latitude_var_name = 'lat'
 # Longitude variable name in satellite files
 longitude_var_name = 'lon'
 # Level or pressure variable name in satellite files - can be either 1D or 2D
