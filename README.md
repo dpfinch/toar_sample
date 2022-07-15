@@ -16,11 +16,23 @@ The program will the iterate through each observation and extract the model prof
 
 The sampled model data will then be written to a file in the same format as the satellite input (or as close to as possible) to be analysed at a later date.
 
+### Downloading the Code
+
+To download the code type the following command into your terminal:
+
+`git clone https://github.com/dpfinch/toar_sample.git`
+
 ### Requirements
 
 This program runs on Python and has been developed using Python 3.7. It should work with any version 3 Python but has not been tested with any Python 2 versions. There are no plans to support Python 2 development as it is now outdated.
 
 It is recommeneded that you set up a virtual environment to ensure the correct versions of modules are used. Instruction to do this can be found [here](https://docs.python-guide.org/dev/virtualenvs/). 
+
+To make the code into a virtual envirionment type the following into your terminal:
+
+`virtualenv --python=python3 toar_sample`
+
+(You may need to change `python3` to either a specific path where you python is installed or a specific version e.g. 3.7)
 
 All necessary modules can be foind in the requirements.txt file. Run `pip install -r requirements.txt` within your virtual environment to install all required modules.
 
@@ -42,7 +54,7 @@ The first step is to edit the `config.py`  file with the relevant information. T
 
 `start_date/end_date` -Set the start and end dates for you satellite data series. The program automatically checks if they are suitable for the available model data
 
-`x_var_name` - The following variables are the names of the variables within the satellite that the program needs (e.g. latitude, longitude etc). These should be self explanitory. If the satellite file being used does not have that product then write `None`. 
+`x_var_name` - The following variables are the names of the variables within the satellite that the program needs (e.g. latitude, longitude etc). These should be self explanitory. If the satellite file being used does not have that product then write `None`. if the variable is within a group in the netcdf file then write it as `group_name/var_name`. 
 
 If the time variable is split across multiple variables (e.g. year, day of year & second in day) then write these as a Python list (in square brackets, separated by commas) e.g. `['year','day_of_year','second_in_day']` and the program will try and interpret this into one date & time. 
 
