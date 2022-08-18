@@ -67,6 +67,8 @@ if ak_level_var_name == None:
     ak_level_var_name = level_var_name
 
 if CAMS_model and not NASA_TES_model:
+    if verbose:
+        print('Using the CAMS model')
     model_type = 'CAMS_model'
 elif NASA_TES_model and not CAMS_model:
     print("** Code not tested with NASA model data, this will be addressed in a later release")

@@ -1,6 +1,7 @@
 ################################################################################
 ################################################################################
 from create_config_vars import config_vars
+from CAMS_model_data import get_CAMS_data
 import get_satellite_data
 from file_writer import output_to_file
 import utils
@@ -12,6 +13,7 @@ from requests import get
 from requests.exceptions import HTTPError
 import pdb
 import pandas as pd
+import xarray as xr
 import numpy as np
 import pathlib
 from scipy.interpolate import interp1d
@@ -121,7 +123,7 @@ def download_model_montly_data(config_vars,model_filepath):
         if config_vars.verbose:
             print("## Download complete ##")
 
-def get_relevant_model_data(config_vars, sat_year):
+def get_nasa_model_data(config_vars, sat_year):
     # Current catch for resolution
     if config_vars.model_temporal_res != '1 monthly':
         print("--> No access to anything but one monthly data currently.")
@@ -146,17 +148,17 @@ def get_relevant_model_data(config_vars, sat_year):
 
 def sample_model(config_vars, satellite_info):
 
-    model_year = config_vars.start_date.year
-    model_data = get_relevant_model_data(config_vars,
-                                                model_year)
-
+    # model_year = config_vars.start_date.year
+    # model_data = get_nasa_model_data(config_vars,
+    #                                             model_year)
+    
     if config_vars.verbose:
         print("--> Sampling model at satellite observations coordinates.")
 
     # Loop through the satellite files
     for sat_file in satellite_info.file_list:
         if config_vars.verbose:
-            print("    Sampling file: {}".format(sat_file))
+            print("Sampling file: {}".format(sat_file))
         sat_data = get_satellite_data.extract_data(config_vars,sat_file)
 
         if len(sat_data.latitude.shape) > 1 or len(sat_data.longitude.shape) > 1:
@@ -181,7 +183,9 @@ def sample_model(config_vars, satellite_info):
 
         satellite_df = utils.add_levs_to_df(satellite_df, sat_data)
         satellite_df.reset_index(inplace = True)
-
+        
+        model_data = get_CAMS_data(config_vars, sat_data)
+        
         # Create empty array to fill with sampled model
         # TODO: make this more flexible
         # Have the same number of levels as the satellite data
@@ -200,24 +204,18 @@ def sample_model(config_vars, satellite_info):
                 if verbose_bool:
                     print("Roughly {}% of profiles in this file complete.".format(progress_monitor))
                 progress_monitor += 5
-            # Find the lat/lon index of the model that matches best with the satellite
-            lat_index = utils.get_coord_value(sample_row.sat_lat, model_data.latitude)
-            lon_index = utils.get_coord_value(sample_row.sat_lon, model_data.longitude)
 
-            if sample_row.Date_Time.year != model_year:
-                model_data = get_relevant_model_data(config_vars,model_year)
-                model_year = sample_row.Date_Time.year
+            
+            sampled_model = model_data.ozone_data.sel(longitude = satellite_df.loc[1].sat_lon,
+                                                latitude = satellite_df.loc[1].sat_lon, 
+                                                time = satellite_df.loc[1].Date_Time, 
+                                                method = 'nearest')
 
-
-            sample_month_index = sample_row.Date_Time.month - 1
-            # Get the full column at given coordinates
-            sampled_o3 = model_data.model_o3[sample_month_index,:,
-                                            lat_index,
-                                            lon_index]
-            sampled_t = model_data.model_t[sample_month_index,:,
-                                            lat_index,
-                                            lon_index]
-
+            sampled_o3 = sampled_model.go3.values
+            sampled_t = sampled_model.t.values
+            pdb.set_trace()
+        
+            # Model units are in kg/kg - need to convert
             model_molec_cm2 = utils.model_vmr_to_molec_cm2(config_vars,sampled_t,
                                                             model_data.levels,
                                                             sampled_o3,molec_weight = 48)
@@ -273,9 +271,8 @@ if __name__ == "__main__":
 
     # Read in the satellite data and find what files are needed
     satellite_info = get_satellite_data.meta_data(config_vars)
-    pdb.set_trace()
-    utils.satellite_date_check(config_vars, satellite_info)
 
+    utils.satellite_date_check(config_vars, satellite_info)
     # Sample the model at the satellite path coordinates
     sat_data = sample_model(config_vars, satellite_info)
 

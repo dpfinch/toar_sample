@@ -8,6 +8,7 @@ test_driver.py
 misc_tests.py
 ral_data_scrape.py
 .DS_Store
+download*
 model_download/
 __pycache__/
 output.txt

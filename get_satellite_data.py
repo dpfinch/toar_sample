@@ -24,6 +24,9 @@ class meta_data():
         '''
             This needs to be updated to be more general
         '''
+        if config_vars.verbose:
+            print('Retreving satellite file list')
+
         files = glob('{}/**/*.{}'.format(self.satellite_file_dir,
                                         self.satellite_file_suffix), recursive = True)
         files.sort()

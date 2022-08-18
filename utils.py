@@ -78,8 +78,8 @@ def get_coord_value(coord, model_coord_range):
         print("** Satellite coordinate outside range -360 - 360 degrees")
         return 0
 
-    value = min(range(len(model_coord_range)),
-                key=lambda i: abs(model_coord_range[i] - coord))
+    nearest_model_ind = (np.abs(model_coord_range - coord)).argmin()
+    value = model_coord_range[nearest_model_ind]
 
     return value
 
