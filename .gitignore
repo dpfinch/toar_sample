@@ -1,6 +1,7 @@
 bin/
 lib/
 docs/
+lib64/
 include/
 pyvenv.cfg
 *.pyc
@@ -12,3 +13,4 @@ download*
 model_download/
 __pycache__/
 output.txt
+pip-selfcheck.json
