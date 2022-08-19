@@ -25,6 +25,10 @@ class get_CAMS_data():
         self.west_lon = lon_min
         self.east_lon = lon_max
 
+        self.levels = [1000.,  950.,  925.,  900.,  850.,  800.,  700.,  600.,  500.,
+        400.,  300.,  250.,  200.,  150.,  100.,   70.,   50.,   30.,
+         20.,   10.,    7.,    5.,    3.,    2.,    1.]
+
         self.download_model_data(config_vars)
 
         self.ozone_data = self.read_data(config_vars)
