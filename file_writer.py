@@ -72,12 +72,12 @@ def output_to_file(config_vars, sat_data):
         n_profiles_dim = 'Time'
 
     orig_o3 = outfile.createVariable('Satellite_O3',
-                                     'f8',('n_profiles','n_levels',))
+                                     'f8',(n_profiles_dim,'n_levels',))
     orig_o3.units = 'molecules/cm2'
     orig_o3[:] = sat_data.o3
 
     orig_o3 = outfile.createVariable('Sampled_model_O3',
-                                     'f8',('n_profiles','n_levels',))
+                                     'f8',(n_profiles_dim,'n_levels',))
     orig_o3.units = sat_data.o3_units
     orig_o3[:] = sat_data.model_o3
 

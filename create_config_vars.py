@@ -34,6 +34,7 @@ class create_config_vars:
 
         model_download_path = os.path.join(self.output_dir, 'model_download')
         self.model_download_path = model_download_path
+        self.model_download_file_name = ''
 
 
 # Make sure the model temporal resolution makes sense
@@ -68,7 +69,7 @@ if ak_level_var_name == None:
 
 if CAMS_model and not NASA_TES_model:
     if verbose:
-        print('Using the CAMS model')
+        print("Using the CAMS model")
     model_type = 'CAMS_model'
 elif NASA_TES_model and not CAMS_model:
     print("** Code not tested with NASA model data, this will be addressed in a later release")

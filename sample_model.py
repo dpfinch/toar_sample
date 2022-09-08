@@ -12,11 +12,11 @@ from urllib.parse import urljoin
 from requests import get
 from requests.exceptions import HTTPError
 import pdb
+from glob import glob
 import pandas as pd
 import xarray as xr
 import numpy as np
 import pathlib
-from scipy.interpolate import interp1d
 #  This prevents a userwarning about converting masked arrays to nans
 import warnings
 warnings.simplefilter("ignore", UserWarning)
@@ -202,19 +202,26 @@ def sample_model(config_vars, satellite_info):
         for sample_index, sample_row in satellite_df.iterrows():
             if sample_index%num_profiles_20th == 0: # Give a print out every 5%
                 if verbose_bool:
-                    print("Roughly {}% of profiles in this file complete.".format(progress_monitor))
+                    print("Approximately {}% of profiles in this file complete.".format(progress_monitor))
                 progress_monitor += 5
 
-            
-            sampled_model = model_data.ozone_data.sel(longitude = satellite_df.loc[1].sat_lon,
-                                                latitude = satellite_df.loc[1].sat_lon, 
-                                                time = satellite_df.loc[1].Date_Time, 
-                                                method = 'nearest')
+            # If time is only one dimension (e.g. only one time step in the model)
+            # then don't use it to select. Assumes a if there is a problem its to 
+            # do with the time dimension - needs updating as not great error catch.
+            try:
+                sampled_model = model_data.ozone_data.sel(longitude = satellite_df.loc[sample_index].sat_lon,
+                                                    latitude = satellite_df.loc[sample_index].sat_lon, 
+                                                    time = satellite_df.loc[sample_index].Date_Time, 
+                                                    method = 'nearest')
+            except KeyError:
+                sampled_model = model_data.ozone_data.sel(longitude = satellite_df.loc[sample_index].sat_lon,
+                                                    latitude = satellite_df.loc[sample_index].sat_lon,
+                                                    method = 'nearest')
+
 
             sampled_o3 = sampled_model.go3.values
             sampled_t = sampled_model.t.values
-            pdb.set_trace()
-        
+            
             # Model units are in kg/kg - need to convert
             model_molec_cm2 = utils.model_vmr_to_molec_cm2(config_vars,sampled_t,
                                                             model_data.levels,
@@ -240,7 +247,6 @@ def sample_model(config_vars, satellite_info):
 
             model_w_prior = model_w_aks + sat_data.prior[sample_index]
 
-
             model_o3_profile[sample_index,:] = model_w_prior
 
         # Turn verbose back on if it was swtiched on before.
@@ -249,6 +255,18 @@ def sample_model(config_vars, satellite_info):
 
         # Send sampled model to netcdf file
         output_to_file(config_vars, sat_data)
+
+        if config_vars.verbose:
+            print("Removing downloaded model file")
+        # Opening the file creates a new temporay file that also needs to be removed
+        file_to_remove_wldcard = config_vars.model_download_filename.split('.grib')[0]
+        files_to_remove = glob(file_to_remove_wldcard + '*')
+        for file_rm in files_to_remove:
+            try:
+                os.remove(file_rm)
+            except:
+                print("Error trying to delete model file: {}".format(file_rm))
+
 
     return sat_data
 

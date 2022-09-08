@@ -206,8 +206,14 @@ def model_vmr_to_molec_cm2(config_vars, sampled_t, model_levels, sampled_o3,
 
     # Calculate molecules of air per cm2 in each level of model
     model_cell_air = calculate_box_air(sampled_t, model_levels)
+
+    # After working out the volume of air between model levels, we need to 
+    # interpolate the model ozone column from 25 layers to the 24 mid points
+    # between model layers
+    
+    interp_ozone = log_interp_to_mid_level(model_levels, sampled_o3)
     # Convert v/v to molecules per cm2
-    model_molec_o3_percm2 = np.multiply(model_cell_air, sampled_o3)
+    model_molec_o3_percm2 = np.multiply(model_cell_air, interp_ozone)
 
     return model_molec_o3_percm2
 
@@ -217,7 +223,7 @@ def regrid_column(o3_col,model_levels,sat_levels):
     Determines the amount of substance within different layers of the
     atmosphere, using interpolation where needed
     """
-
+    
     cumulative_col = log_interp_sum_to_level(model_levels,o3_col,sat_levels)
     output_col = np.zeros(len(cumulative_col))
     for z in range(len(sat_levels)):
@@ -227,6 +233,18 @@ def regrid_column(o3_col,model_levels,sat_levels):
             output_col[z] = cumulative_col[z] - cumulative_col[z-1]
 
     return output_col
+
+def log_interp_to_mid_level(model_pres,model_ozone):
+    """
+    Interpolate between the log of pressure levels to account for non linear pressure change
+    """
+
+    model_mid_levels = model_pres[:-1] + np.diff(model_pres)/2
+    log_pres_org = np.log(model_pres)
+    f = interp1d(log_pres_org,model_ozone)
+
+    interp_o3 = f(np.log(model_mid_levels))
+    return interp_o3
 
 def log_interp_sum_to_level(pres_col,amount_col,out_levels):
     """
@@ -244,7 +262,7 @@ def log_interp_sum_to_level(pres_col,amount_col,out_levels):
     #get cumulative version of amount
     amount_col_cum = np.nancumsum(amount_col)
     amount_col_cum = np.append(0,amount_col_cum)
-##    pdb.set_trace()
+    
     #move any points below lowest and above higest to edge of range
     if type(out_levels_log) != float:
         for i in range(len(out_levels_log)):
@@ -252,7 +270,7 @@ def log_interp_sum_to_level(pres_col,amount_col,out_levels):
                 out_levels_log[i] = min(pres_col_log)
             elif out_levels_log[i] > max(pres_col_log):
                 out_levels_log[i] = max(pres_col_log)
-
+    
     # create interpolation function
     f = interp1d(pres_col_log,amount_col_cum)
 
@@ -368,13 +386,13 @@ def level_check(config_vars, sample_index, sample_row, sat_data):
     # Replace negative values
     o3_lev[o3_lev < 0] = np.nanmax(o3_lev)
     ak_lev[ak_lev < 0] = np.nanmax(ak_lev)
-
+    
     if len(o3_lev) not in sat_data.o3.shape:
         if config_vars.verbose:
-            print("--> Levels provided do not match O3 profile.")
+            print("--> Levels provided do not match o3 profile.")
     if len(o3_lev) - 1 in sat_data.o3.shape:
         if config_vars.verbose:
-            print("--> Levels are one greater than O3 profile.")
+            print("--> Levels are one greater than o3 profile.")
             print("    Assuming they are level edges and will interpolate between them.")
             print("    Calculating mid point between levels. Assuming linear interpolation.")
 
