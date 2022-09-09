@@ -1,4 +1,4 @@
-# TOAR Sample
+# TOAR Satellite Sample
 
 ### Overview & Purpose
 
@@ -8,11 +8,11 @@ Different satellite products are inconsistent when reporting the tropospheric oz
 
 ### How it Works
 
-This program reads in satellite files and extracts the latitude, longitude and time of each observation along with any other necessary information, such as averaging kernals, layer profiles and quality flags. Once the program has deteremined where and when the satellite is sampling, it download the relevant chemical reanalysis data from [JPL](https://tes.jpl.nasa.gov/tes/chemical-reanalysis/products/monthly-mean/).
+This program reads in satellite files and extracts the latitude, longitude and time of each observation along with any other necessary information, such as averaging kernals, layer profiles and quality flags. Once the program has deteremined where and when the satellite is sampling, it download the relevant chemical reanalysis data from [CAMS](https://confluence.ecmwf.int/display/CKB/CAMS%3A+Reanalysis+data+documentation#heading-Levellistings).
 
-This model data is currently monthly-mean 3D products at a 1.1° × 1.1° resolution available between 2005-2019. Higher temporal resolution will be used in the future and the code will be updated to match.
+This model data is a 3-hourly from 00-UTC 3D products at a roughyl 80 km resolution available between 2005-2019. High spatial and temporal resolution will be availble in the future from [JPL](https://tes.jpl.nasa.gov/tes/chemical-reanalysis/products/monthly-mean/) and the code will be updated to allow both model datasets to be used.
 
-The program will the iterate through each observation and extract the model profile at the same coordinate and time as the observation. It will then interpolate the model levels to match the satellite levels  and apply the satellite averaging kernels if necessary and produce a comparable product to the satellite input.
+The program will the iterate through each observation and extract the model profile at the same coordinate and time as the observation. It will then interpolate the model levels to match the satellite levels and apply the satellite averaging kernels if necessary and produce a comparable product to the satellite input.
 
 The sampled model data will then be written to a file in the same format as the satellite input (or as close to as possible) to be analysed at a later date.
 
@@ -37,6 +37,8 @@ To make the code into a virtual envirionment type the following into your termin
 All necessary modules can be foind in the requirements.txt file. Run `pip install -r requirements.txt` within your virtual environment to install all required modules.
 
 It is possible to install these one by one and as needed by running the program and errors occur when a module is needed and not been installed. This method is not advised as you may end up with the wrong version of the module and there is no guarantee it will work.
+
+This program uses the Copernicus CDS API to pull the model data. You will need a (free) account to access the data and for the sampling software to work. Information on this can be found [here] (https://ads.atmosphere.copernicus.eu/api-how-to#install-the-cds-api-key)
 
 ### Running the Program
 
