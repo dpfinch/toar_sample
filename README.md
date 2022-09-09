@@ -38,7 +38,7 @@ All necessary modules can be foind in the requirements.txt file. Run `pip instal
 
 It is possible to install these one by one and as needed by running the program and errors occur when a module is needed and not been installed. This method is not advised as you may end up with the wrong version of the module and there is no guarantee it will work.
 
-This program uses the Copernicus CDS API to pull the model data. You will need a (free) account to access the data and for the sampling software to work. Information on this can be found [here] (https://ads.atmosphere.copernicus.eu/api-how-to#install-the-cds-api-key)
+This program uses the Copernicus CDS API to pull the model data. You will need a (free) account to access the data and for the sampling software to work. Information on this can be found [here](https://ads.atmosphere.copernicus.eu/api-how-to#install-the-cds-api-key)
 
 ### Running the Program
 
