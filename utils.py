@@ -52,12 +52,32 @@ def convert_time_since_units(since_datetime):
         time_str_array = since_datetime.split()
         for time_unit_str in time_str_array:
             if time_unit_str.lower() in ['seconds','hours','days','months']:
+
                 time_unit = time_unit_str.lower()
                 # Split on the word 'since'
                 since_split = since_datetime.lower().split('since')[1]
-                next_time_split = since_split.split()
-                datetime_str = '{} {}'.format(next_time_split[0],next_time_split[1])
+                # Find how the date is split (e.g. with '.','/',':')
+                try:
+                    next_time_split = since_split.split()
+                    datetime_str = '{} {}'.format(next_time_split[0],next_time_split[1])
+                except IndexError:
+                    if '/' in next_time_split[0]:
+                        split_char = '/'
+                    elif ':' in next_time_split[0]:
+                        split_char = ':'
+                    elif '.' in next_time_split[0]:
+                        split_char = '.'
+                    else:
+                        print("*"*8)
+                        print("Unable to parse datetime. Raise issue on GitHub")
+                        print("*"*8)
+                        sys.exit()
+                    next_time_split = since_split.split(split_char)
+                    datetime_str = '{} {} {}'.format(next_time_split[0].strip(),
+                                                        next_time_split[1].strip(),
+                                                        next_time_split[2].strip())
                 # Use pandas datetime function as it is more forgiving
+                # pdb.set_trace()
                 unit_base_time = pd.to_datetime(datetime_str)
                 return time_unit, unit_base_time
 
