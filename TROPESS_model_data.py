@@ -78,4 +78,5 @@ class get_TROPESS_data():
 if __name__ == '__main__':
     url = 'https://tropess.gesdisc.eosdis.nasa.gov/opendap/TCR2_6HR_VERTCONCS/TRPSCRO36H3D.1/TROPESS_reanalysis_6hr_o3_2005.nc'
     dataset = nc4.Dataset(url)
+    
     pdb.set_trace()
