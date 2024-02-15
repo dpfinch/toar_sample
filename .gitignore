@@ -15,3 +15,5 @@ __pycache__/
 output.txt
 pip-selfcheck.json
 *png
+.netrc
+.urs_cookies
