@@ -25,6 +25,7 @@ class create_config_vars:
         self.ak_var_name = kwargs.get('ak_var_name','')
         self.prior_var_name = kwargs.get('prior_var_name','')
         self.o3_var_name = kwargs.get('o3_var_name','')
+        self.model_type = kwargs.get('model_type','NASA_model')
         self.model_repo_url = kwargs.get('model_repo_url','')
         self.keep_model_downloads = kwargs.get('keep_model_downloads',True)
         self.verbose = kwargs.get('verbose',True)
@@ -67,20 +68,20 @@ print("### SAMPLING MODEL FOR {} ###".format(satellite_product_name))
 if ak_level_var_name == None:
     ak_level_var_name = level_var_name
 
-if CAMS_model and not NASA_TES_model:
+if CAMS_model and not NASA_TROPESS_model:
     if verbose:
         print("Using the CAMS model")
     model_type = 'CAMS_model'
-elif NASA_TES_model and not CAMS_model:
+elif NASA_TROPESS_model and not CAMS_model:
     print("** Code not tested with NASA model data, this will be addressed in a later release")
     model_type = 'NASA_model'
-    sys.exit()
-elif not NASA_TES_model and not CAMS_model:
-    print("No model selected, defaulting to CAMS")
-    model_type = 'CAMS_model'
+    # sys.exit()
+elif not NASA_TROPESS_model and not CAMS_model:
+    print("No model selected, defaulting to TROPESS")
+    model_type = 'NASA_model'
 else:
-    print("Both models selected, defaulting to CAMS")
-    model_type = 'CAMS_model'   
+    print("Both models selected, defaulting to TROPESS")
+    model_type = 'NASA_model'   
 
 # This is the model URL for monthly NASA TES model output - probably not needed
 model_repo_url = 'https://tes.jpl.nasa.gov/raw-data/tcr-2_files/monthly-mean_emissions/'

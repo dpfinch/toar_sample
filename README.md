@@ -74,7 +74,7 @@ If the time variable is split across multiple variables (e.g. year, day of year 
 
 The main driving script of the program is `sample_model.py`. To run this via terminal, change into the code directory and type the command `python sample_model.py`. Or run within an IDE (e.g. Spyder or Visual Studio Code). 
 
-If the verbose keyword is set in the cofig file, you should see print outs of the progress of the program. The speed of the this program varies dramatically due to the different satellite files. The larger the satellite file the longer the script will take to run. There are plans to increase the speed of the program in future developments.
+If the verbose keyword is set in the config file, you should see print outs of the progress of the program. The speed of the this program varies dramatically due to the different satellite files. The larger the satellite file the longer the script will take to run. There are plans to increase the speed of the program in future developments.
 
 ### Reporting Errors
 
@@ -86,3 +86,5 @@ Please report any errors or bugs on the GitHub issues page so they are logged pr
 
 As mentioned above, there are plenty of developments and fixes needed. This will be mainly driven by the needs of the community. Please suggests any changes you want or need to be incorporated into the code.
 
+### NASA Auth Login
+https://uat.gesdisc.eosdis.nasa.gov/data-access#ncdump

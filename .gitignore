@@ -14,3 +14,4 @@ model_download/
 __pycache__/
 output.txt
 pip-selfcheck.json
+*png

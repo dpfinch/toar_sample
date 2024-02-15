@@ -2,6 +2,7 @@
 ################################################################################
 from create_config_vars import config_vars
 from CAMS_model_data import get_CAMS_data
+from TROPESS_model_data import get_TROPESS_data
 import get_satellite_data
 from file_writer import output_to_file
 import utils
@@ -154,7 +155,7 @@ def sample_model(config_vars, satellite_info):
     
     if config_vars.verbose:
         print("--> Sampling model at satellite observations coordinates.")
-
+    
     # Loop through the satellite files
     for sat_file in satellite_info.file_list:
         if config_vars.verbose:
@@ -183,14 +184,16 @@ def sample_model(config_vars, satellite_info):
 
         satellite_df = utils.add_levs_to_df(satellite_df, sat_data)
         satellite_df.reset_index(inplace = True)
-        
-        model_data = get_CAMS_data(config_vars, sat_data)
-        
+        if config_vars.model_type == 'CAMS_model':
+            model_data = get_CAMS_data(config_vars, sat_data)
+        else:
+            model_data = get_TROPESS_data(config_vars, sat_data)
+            
         # Create empty array to fill with sampled model
         # TODO: make this more flexible
         # Have the same number of levels as the satellite data
-        model_o3_profile = np.zeros(sat_data.o3.shape)
-
+        model_o3_ak_profile = np.zeros(sat_data.o3.shape)
+        model_o3_profile = np.zeros([len(satellite_df), 23])
         # A temporay fix for prevent multiple print outs from the verbose config
         # Verbose is swtich off in this loop temporarily
         verbose_bool = config_vars.verbose
@@ -202,7 +205,10 @@ def sample_model(config_vars, satellite_info):
         for sample_index, sample_row in satellite_df.iterrows():
             if sample_index%num_profiles_20th == 0: # Give a print out every 5%
                 if verbose_bool:
-                    print("Approximately {}% of profiles in this file complete.".format(progress_monitor))
+                    if sample_index/num_profiles_20th > 94:
+                        print("Approximately {}% of profiles in this file complete.".format(progress_monitor))
+                    else:
+                        print("Approximately {}% of profiles in this file complete.".format(progress_monitor), end = '\r')
                 progress_monitor += 5
 
             # If time is only one dimension (e.g. only one time step in the model)
@@ -244,15 +250,14 @@ def sample_model(config_vars, satellite_info):
             model_w_aks = apply_aks_to_model(config_vars,
                                             interped_model_o3,
                                             sat_data, sample_index)
-
-            model_w_prior = model_w_aks + sat_data.prior[sample_index]
-
-            model_o3_profile[sample_index,:] = model_w_prior
-
+            
+            model_o3_ak_profile[sample_index,:] = model_w_aks
+            model_o3_profile[sample_index,:] = interped_model_o3
         # Turn verbose back on if it was swtiched on before.
         config_vars.verbose = verbose_bool
-        sat_data.model_o3 = model_o3_profile
-
+        model_o3_ak_profile[model_o3_ak_profile < 0] = np.nan
+        sat_data.model_o3_ak = model_o3_ak_profile
+        pdb.set_trace()
         # Send sampled model to netcdf file
         output_to_file(config_vars, sat_data)
 
@@ -276,13 +281,14 @@ def apply_aks_to_model(config_vars,model_column,sat_data, sample_index):
         Apply the averaging kernals from the satellite files to the sampled model
         Averaging kernels applied by the dot product of model and aks from sat data
     """
-    # sat_prior = sat_data.prior[sample_index]
+    sat_prior = sat_data.prior[sample_index]
     sat_ak = sat_data.aks[sample_index]
 
-    # sat_model_diff = model_column - sat_prior
-    # applied_aks = sat_prior  + np.dot(sat_model_diff, sat_ak)
-    applied_aks = np.dot(model_column, sat_ak)
-
+    if config_vars.satellite_product == 'OMI-RAL':
+        applied_aks = np.dot(model_column,sat_ak)
+    else:
+        sat_model_diff = model_column - sat_prior
+        applied_aks = sat_prior + np.dot(sat_model_diff, sat_ak)
     return applied_aks
 
 if __name__ == "__main__":
