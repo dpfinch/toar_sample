@@ -88,3 +88,4 @@ As mentioned above, there are plenty of developments and fixes needed. This will
 
 ### NASA Auth Login
 https://uat.gesdisc.eosdis.nasa.gov/data-access#ncdump
+netCDF4 module needs to be version 1.5.7 (later versions have connection issues)
