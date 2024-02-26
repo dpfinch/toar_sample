@@ -9,7 +9,7 @@ click==8.1.3
 eccodes==1.4.2
 findlibs==0.0.2
 idna==3.3
-netCDF4==1.6.0
+netCDF4==1.5.7
 numpy==1.23.1
 packaging==21.3
 pandas==1.4.3

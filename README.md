@@ -8,9 +8,11 @@ Different satellite products are inconsistent when reporting the tropospheric oz
 
 ### How it Works
 
-This program reads in satellite files and extracts the latitude, longitude and time of each observation along with any other necessary information, such as averaging kernals, layer profiles and quality flags. Once the program has deteremined where and when the satellite is sampling, it download the relevant chemical reanalysis data from [CAMS](https://confluence.ecmwf.int/display/CKB/CAMS%3A+Reanalysis+data+documentation#heading-Levellistings).
+This program reads in satellite files and extracts the latitude, longitude and time of each observation along with any other necessary information, such as averaging kernals, layer profiles and quality flags. Once the program has deteremined where and when the satellite is sampling, it download the relevant chemical reanalysis data from [NASA TROPESS](https://tes.jpl.nasa.gov/tropess/get-data/) or [CAMS](https://confluence.ecmwf.int/display/CKB/CAMS%3A+Reanalysis+data+documentation#heading-Levellistings).
 
-This model data is a 3-hourly from 00-UTC 3D products at a roughyl 80 km resolution available between 2005-2019. High spatial and temporal resolution will be availble in the future from [JPL](https://tes.jpl.nasa.gov/tes/chemical-reanalysis/products/monthly-mean/) and the code will be updated to allow both model datasets to be used.
+..Details about TROPESS here...
+
+This CAMS model data is a 3-hourly from 00-UTC 3D products at a roughyl 80 km resolution available between 2005-2019. High spatial and temporal resolution will be availble in the future from [JPL](https://tes.jpl.nasa.gov/tes/chemical-reanalysis/products/monthly-mean/) and the code will be updated to allow both model datasets to be used.
 
 The program will the iterate through each observation and extract the model profile at the same coordinate and time as the observation. It will then interpolate the model levels to match the satellite levels and apply the satellite averaging kernels if necessary and produce a comparable product to the satellite input.
 
